@@ -21,10 +21,12 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Self-contained, production-ready HTTP server providing REST API and CloudConvert-style
- * Web UI for the DXF to PDF vector conversion engine.
+ * Production-ready HTTP server providing REST API and DocConvert Web UI
+ * for the DXF to PDF vector conversion engine.
  */
 public class DxfServer {
 
@@ -32,6 +34,12 @@ public class DxfServer {
     private static final String DEFAULT_HOST = "0.0.0.0";
     private static final long START_TIME = System.currentTimeMillis();
     private static final String STATIC_DIR_OVERRIDE = "src/main/resources/static";
+
+    // Configurable Upload & Concurrency Limits
+    private static final int DEFAULT_MAX_UPLOAD_MB = 25;
+    private static final int MAX_UPLOAD_BYTES = initMaxUploadBytes();
+    private static final int MAX_CONCURRENT_CONVERSIONS = initMaxConversions();
+    private static final Semaphore CONVERSION_SEMAPHORE = new Semaphore(MAX_CONCURRENT_CONVERSIONS);
 
     private final HttpServer server;
     private final int port;
@@ -44,6 +52,24 @@ public class DxfServer {
         this.server.setExecutor(Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors() * 2)));
 
         setupRoutes();
+    }
+
+    private static int initMaxUploadBytes() {
+        String env = System.getenv("MAX_UPLOAD_SIZE_MB");
+        int mb = DEFAULT_MAX_UPLOAD_MB;
+        if (env != null && !env.trim().isEmpty()) {
+            try { mb = Integer.parseInt(env.trim()); } catch (NumberFormatException ignored) {}
+        }
+        return mb * 1024 * 1024;
+    }
+
+    private static int initMaxConversions() {
+        String env = System.getenv("MAX_CONCURRENT_CONVERSIONS");
+        int max = 3;
+        if (env != null && !env.trim().isEmpty()) {
+            try { max = Integer.parseInt(env.trim()); } catch (NumberFormatException ignored) {}
+        }
+        return Math.max(1, max);
     }
 
     private void setupRoutes() {
@@ -66,13 +92,15 @@ public class DxfServer {
     public void start() {
         server.start();
         System.out.println("=================================================================");
-        System.out.println("   CADConvert - DXF to Vector PDF Web Application & REST API");
+        System.out.println("   DocConvert - DXF to Vector PDF Web Application & REST API");
         System.out.println("=================================================================");
-        System.out.println(" Server running at: http://localhost:" + port + "/");
-        System.out.println(" REST API Endpoint: http://localhost:" + port + "/api/convert");
-        System.out.println(" Preview Endpoint:  http://localhost:" + port + "/api/preview");
-        System.out.println(" Health Check:      http://localhost:" + port + "/api/health");
-        System.out.println(" Sample CAD File:   http://localhost:" + port + "/api/sample");
+        System.out.println(" Server running at: http://" + host + ":" + port + "/");
+        System.out.println(" REST API Endpoint: http://" + host + ":" + port + "/api/convert");
+        System.out.println(" Preview Endpoint:  http://" + host + ":" + port + "/api/preview");
+        System.out.println(" Health Check:      http://" + host + ":" + port + "/api/health");
+        System.out.println(" Max Upload Limit:  " + (MAX_UPLOAD_BYTES / (1024 * 1024)) + " MB");
+        System.out.println(" Max Concurrency:   " + MAX_CONCURRENT_CONVERSIONS + " workers");
+        System.out.println(" Storage Policy:    100% In-Memory (Zero Disk Retention)");
         System.out.println("=================================================================");
     }
 
@@ -107,7 +135,7 @@ public class DxfServer {
             app.start();
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("\nShutting down CADConvert Server...");
+                System.out.println("\nShutting down DocConvert Server...");
                 app.stop(1);
             }));
         } catch (IOException e) {
@@ -131,14 +159,10 @@ public class DxfServer {
             }
 
             long uptimeSec = (System.currentTimeMillis() - START_TIME) / 1000;
-            Runtime runtime = Runtime.getRuntime();
-            long freeMem = runtime.freeMemory() / (1024 * 1024);
-            long totalMem = runtime.totalMemory() / (1024 * 1024);
-
             String json = String.format(
-                    "{\"status\":\"UP\",\"service\":\"CADConvert DXF to PDF\",\"version\":\"1.0.0\"," +
-                    "\"uptimeSeconds\":%d,\"availableProcessors\":%d,\"memoryMb\":{\"free\":%d,\"total\":%d}}",
-                    uptimeSec, runtime.availableProcessors(), freeMem, totalMem
+                    "{\"status\":\"UP\",\"service\":\"DocConvert CAD-to-PDF Engine\",\"version\":\"1.0.0\"," +
+                    "\"uptimeSeconds\":%d,\"maxUploadMb\":%d}",
+                    uptimeSec, (MAX_UPLOAD_BYTES / (1024 * 1024))
             );
 
             byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
@@ -160,14 +184,44 @@ public class DxfServer {
             }
 
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                sendError(exchange, 405, "Method Not Allowed. Use POST.");
+                sendError(exchange, 405, "METHOD_NOT_ALLOWED", "Method Not Allowed. Use POST.");
                 return;
             }
 
+            String reqId = UUID.randomUUID().toString().substring(0, 8);
+            long startTime = System.currentTimeMillis();
+            ParsedUpload upload;
+
             try {
-                ParsedUpload upload = parseRequest(exchange);
-                if (upload.dxfContent == null || upload.dxfContent.trim().isEmpty()) {
-                    sendError(exchange, 400, "Missing DXF file content in request body.");
+                upload = parseRequest(exchange);
+            } catch (PayloadTooLargeException e) {
+                logOp("CONVERT", reqId, 413, System.currentTimeMillis() - startTime, 0, 0, "PayloadTooLarge");
+                sendError(exchange, 413, "PAYLOAD_TOO_LARGE", e.getMessage());
+                return;
+            } catch (Exception e) {
+                logOp("CONVERT", reqId, 400, System.currentTimeMillis() - startTime, 0, 0, "BadRequest");
+                sendError(exchange, 400, "BAD_REQUEST", "Unable to parse request body.");
+                return;
+            }
+
+            if (upload.dxfContent == null || upload.dxfContent.trim().isEmpty()) {
+                logOp("CONVERT", reqId, 400, System.currentTimeMillis() - startTime, 0, 0, "EmptyContent");
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing DXF file content in request body.");
+                return;
+            }
+
+            if (!isValidDxfContent(upload.dxfContent)) {
+                logOp("CONVERT", reqId, 400, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "InvalidDxfHeader");
+                sendError(exchange, 400, "INVALID_DXF", "The provided file is not a valid DXF drawing. Expected standard DXF section headers.");
+                return;
+            }
+
+            boolean acquired = false;
+            try {
+                acquired = CONVERSION_SEMAPHORE.tryAcquire(3, TimeUnit.SECONDS);
+                if (!acquired) {
+                    logOp("CONVERT", reqId, 429, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "ConcurrencyLimitReached");
+                    sendError(exchange, 429, "RATE_LIMITED", "Server is busy processing maximum concurrent drawings. Please retry in a few moments.");
                     return;
                 }
 
@@ -189,14 +243,15 @@ public class DxfServer {
                     // If JSON response requested or preview requested
                     if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
                         try {
-                            previewBytes = renderPreviewImage(doc, upload.dpi);
-                        } catch (Exception e) {
-                            System.err.println("Warning: Preview rasterization skipped: " + e.getMessage());
+                            previewBytes = renderPreviewImage(doc, Math.min(upload.dpi, 300));
+                        } catch (Exception ignored) {
+                            // Non-fatal preview rasterization failure
                         }
                     }
                 }
 
                 String baseName = upload.filename != null ? upload.filename.replaceAll("(?i)\\.dxf$", "") : "drawing";
+                baseName = baseName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
                 if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
                     String pdfB64 = Base64.getEncoder().encodeToString(pdfBytes);
@@ -213,6 +268,7 @@ public class DxfServer {
                     try (OutputStream os = exchange.getResponseBody()) {
                         os.write(responseBytes);
                     }
+                    logOp("CONVERT", reqId, 200, System.currentTimeMillis() - startTime, upload.dxfContent.length(), pdfBytes.length, "JSON");
                 } else {
                     // Return raw PDF binary stream
                     Headers respHeaders = exchange.getResponseHeaders();
@@ -223,12 +279,16 @@ public class DxfServer {
                     try (OutputStream os = exchange.getResponseBody()) {
                         os.write(pdfBytes);
                     }
+                    logOp("CONVERT", reqId, 200, System.currentTimeMillis() - startTime, upload.dxfContent.length(), pdfBytes.length, "RAW_PDF");
                 }
 
             } catch (Exception e) {
-                System.err.println("Conversion error: " + e.getMessage());
-                e.printStackTrace();
-                sendError(exchange, 500, "DXF Conversion failed: " + e.getMessage());
+                logOp("CONVERT", reqId, 500, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "Error=" + e.getClass().getSimpleName());
+                sendError(exchange, 500, "CONVERSION_FAILED", "Failed to compile CAD drawing into vector PDF. The file may contain unsupported or damaged geometry.");
+            } finally {
+                if (acquired) {
+                    CONVERSION_SEMAPHORE.release();
+                }
             }
         }
     }
@@ -243,14 +303,44 @@ public class DxfServer {
             }
 
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                sendError(exchange, 405, "Method Not Allowed. Use POST.");
+                sendError(exchange, 405, "METHOD_NOT_ALLOWED", "Method Not Allowed. Use POST.");
                 return;
             }
 
+            String reqId = UUID.randomUUID().toString().substring(0, 8);
+            long startTime = System.currentTimeMillis();
+            ParsedUpload upload;
+
             try {
-                ParsedUpload upload = parseRequest(exchange);
-                if (upload.dxfContent == null || upload.dxfContent.trim().isEmpty()) {
-                    sendError(exchange, 400, "Missing DXF file content.");
+                upload = parseRequest(exchange);
+            } catch (PayloadTooLargeException e) {
+                logOp("PREVIEW", reqId, 413, System.currentTimeMillis() - startTime, 0, 0, "PayloadTooLarge");
+                sendError(exchange, 413, "PAYLOAD_TOO_LARGE", e.getMessage());
+                return;
+            } catch (Exception e) {
+                logOp("PREVIEW", reqId, 400, System.currentTimeMillis() - startTime, 0, 0, "BadRequest");
+                sendError(exchange, 400, "BAD_REQUEST", "Unable to parse request body.");
+                return;
+            }
+
+            if (upload.dxfContent == null || upload.dxfContent.trim().isEmpty()) {
+                logOp("PREVIEW", reqId, 400, System.currentTimeMillis() - startTime, 0, 0, "EmptyContent");
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing DXF file content.");
+                return;
+            }
+
+            if (!isValidDxfContent(upload.dxfContent)) {
+                logOp("PREVIEW", reqId, 400, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "InvalidDxfHeader");
+                sendError(exchange, 400, "INVALID_DXF", "The provided file is not a valid DXF drawing.");
+                return;
+            }
+
+            boolean acquired = false;
+            try {
+                acquired = CONVERSION_SEMAPHORE.tryAcquire(3, TimeUnit.SECONDS);
+                if (!acquired) {
+                    logOp("PREVIEW", reqId, 429, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "ConcurrencyLimitReached");
+                    sendError(exchange, 429, "RATE_LIMITED", "Server is busy processing maximum concurrent drawings. Please retry in a few moments.");
                     return;
                 }
 
@@ -261,7 +351,7 @@ public class DxfServer {
 
                 byte[] pngBytes;
                 try (PDDocument doc = DxfToPdfConverter.convertToPdfDocument(upload.dxfContent, hatchEngine, null)) {
-                    pngBytes = renderPreviewImage(doc, upload.dpi);
+                    pngBytes = renderPreviewImage(doc, Math.min(upload.dpi, 300));
                 }
 
                 Headers respHeaders = exchange.getResponseHeaders();
@@ -271,11 +361,15 @@ public class DxfServer {
                 try (OutputStream os = exchange.getResponseBody()) {
                     os.write(pngBytes);
                 }
+                logOp("PREVIEW", reqId, 200, System.currentTimeMillis() - startTime, upload.dxfContent.length(), pngBytes.length, "OK");
 
             } catch (Exception e) {
-                System.err.println("Preview error: " + e.getMessage());
-                e.printStackTrace();
-                sendError(exchange, 500, "Preview generation failed: " + e.getMessage());
+                logOp("PREVIEW", reqId, 500, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "Error=" + e.getClass().getSimpleName());
+                sendError(exchange, 500, "PREVIEW_FAILED", "Preview generation failed. The drawing may contain unsupported CAD elements.");
+            } finally {
+                if (acquired) {
+                    CONVERSION_SEMAPHORE.release();
+                }
             }
         }
     }
@@ -295,7 +389,7 @@ public class DxfServer {
                 bytes = Files.readAllBytes(samplePath);
             } else {
                 try (InputStream is = DxfServer.class.getResourceAsStream("/static/sample.dxf")) {
-                    if (is != null) bytes = readAllBytes(is);
+                    if (is != null) bytes = readAllBytesBounded(is, 1024 * 1024);
                 }
             }
             if (bytes == null) {
@@ -330,7 +424,7 @@ public class DxfServer {
             // Sanitize against directory traversal
             path = path.replace("\\", "/");
             if (path.contains("..")) {
-                sendError(exchange, 403, "Access denied.");
+                sendError(exchange, 403, "ACCESS_DENIED", "Access denied.");
                 return;
             }
 
@@ -342,7 +436,6 @@ public class DxfServer {
             if (Files.exists(localPath) && !Files.isDirectory(localPath)) {
                 content = Files.readAllBytes(localPath);
             } else {
-                // Also check static/
                 Path staticSub = Paths.get(STATIC_DIR_OVERRIDE, path);
                 if (Files.exists(staticSub) && !Files.isDirectory(staticSub)) {
                     content = Files.readAllBytes(staticSub);
@@ -354,13 +447,13 @@ public class DxfServer {
                 String resourcePath = "/static/" + relativePath;
                 try (InputStream is = DxfServer.class.getResourceAsStream(resourcePath)) {
                     if (is != null) {
-                        content = readAllBytes(is);
+                        content = readAllBytesBounded(is, 10 * 1024 * 1024);
                     }
                 }
             }
 
             if (content == null) {
-                sendError(exchange, 404, "File not found: " + path);
+                sendError(exchange, 404, "NOT_FOUND", "File not found: " + path);
                 return;
             }
 
@@ -378,6 +471,12 @@ public class DxfServer {
     // =========================================================================
     // Helper Methods & Request Parser
     // =========================================================================
+
+    private static class PayloadTooLargeException extends IOException {
+        public PayloadTooLargeException(String message) {
+            super(message);
+        }
+    }
 
     private static class ParsedUpload {
         String dxfContent;
@@ -429,7 +528,7 @@ public class DxfServer {
         }
 
         InputStream is = exchange.getRequestBody();
-        byte[] bodyBytes = readAllBytes(is);
+        byte[] bodyBytes = readAllBytesBounded(is, MAX_UPLOAD_BYTES);
 
         if (contentType != null && contentType.toLowerCase().contains("multipart/form-data")) {
             parseMultipart(bodyBytes, contentType, parsed);
@@ -439,6 +538,19 @@ public class DxfServer {
         }
 
         return parsed;
+    }
+
+    private static boolean isValidDxfContent(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return false;
+        }
+        // Binary DXF sentinel
+        if (content.startsWith("AutoCAD Binary DXF")) {
+            return true;
+        }
+        // Check first 4096 characters for standard DXF keywords
+        String head = content.length() > 4096 ? content.substring(0, 4096) : content;
+        return head.contains("SECTION") || head.contains("ENTITIES") || head.contains("HEADER") || head.contains("BLOCKS") || head.contains("TABLES") || content.contains("EOF");
     }
 
     private static void parseMultipart(byte[] body, String contentType, ParsedUpload out) {
@@ -473,7 +585,6 @@ public class DxfServer {
             }
 
             if (headerText.contains("name=\"file\"") || headerText.contains("filename=")) {
-                // Extract filename if present
                 int fnIdx = headerText.indexOf("filename=\"");
                 if (fnIdx != -1) {
                     int fnEnd = headerText.indexOf("\"", fnIdx + 10);
@@ -540,14 +651,34 @@ public class DxfServer {
         h.set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, X-Requested-With, X-Filename, X-Target-Layers, X-Output-Format");
     }
 
-    private static void sendError(HttpExchange exchange, int status, String message) throws IOException {
-        String json = "{\"error\":\"" + escapeJson(message) + "\",\"status\":" + status + "}";
+    private static void sendError(HttpExchange exchange, int status, String code, String message) throws IOException {
+        String json = "{\"error\":\"" + escapeJson(message) + "\",\"code\":\"" + escapeJson(code) + "\",\"status\":" + status + "}";
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
+    }
+
+    private static void sendError(HttpExchange exchange, int status, String message) throws IOException {
+        sendError(exchange, status, "ERROR_" + status, message);
+    }
+
+    private static void logOp(String op, String reqId, int status, long durationMs, long inBytes, long outBytes, String note) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        System.out.println(String.format(
+            "[%s] [OP=%s] [REQ=%s] [STATUS=%d] [DURATION_MS=%d] [IN_BYTES=%d] [OUT_BYTES=%d]%s",
+            sdf.format(new Date()),
+            op,
+            reqId,
+            status,
+            durationMs,
+            inBytes,
+            outBytes,
+            (note != null && !note.isEmpty()) ? " " + note : ""
+        ));
     }
 
     private static String getMimeType(String path) {
@@ -562,6 +693,8 @@ public class DxfServer {
         if (lower.endsWith(".ico")) return "image/x-icon";
         if (lower.endsWith(".dxf")) return "application/dxf";
         if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".xml")) return "application/xml; charset=UTF-8";
+        if (lower.endsWith(".txt")) return "text/plain; charset=UTF-8";
         return "application/octet-stream";
     }
 
@@ -579,11 +712,16 @@ public class DxfServer {
         return imgBaos.toByteArray();
     }
 
-    private static byte[] readAllBytes(InputStream is) throws IOException {
+    private static byte[] readAllBytesBounded(InputStream is, int maxBytes) throws IOException {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         int nRead;
+        int total = 0;
         byte[] data = new byte[8192];
         while ((nRead = is.read(data, 0, data.length)) != -1) {
+            total += nRead;
+            if (total > maxBytes) {
+                throw new PayloadTooLargeException("Upload size exceeds maximum allowed limit of " + (maxBytes / (1024 * 1024)) + " MB.");
+            }
             buffer.write(data, 0, nRead);
         }
         return buffer.toByteArray();
@@ -613,28 +751,21 @@ public class DxfServer {
                 "0\nLAYER\n2\nDOORS\n70\n0\n62\n1\n6\nCONTINUOUS\n0\n" +
                 "0\nENDTAB\n0\nENDSEC\n" +
                 "0\nSECTION\n2\nENTITIES\n" +
-                // Outer Boundary
                 "0\nLWPOLYLINE\n8\nWALLS\n90\n4\n70\n1\n10\n0.0\n20\n0.0\n10\n600.0\n20\n0.0\n10\n600.0\n20\n400.0\n10\n0.0\n20\n400.0\n" +
-                // Interior Wall
                 "0\nLINE\n8\nWALLS\n10\n300.0\n20\n0.0\n11\n300.0\n21\n400.0\n" +
-                // Parking Area Hatch
                 "0\nHATCH\n8\nPARKING\n2\nSOLID\n70\n1\n71\n0\n91\n1\n92\n3\n72\n0\n73\n1\n93\n4\n" +
                 "10\n50.0\n20\n50.0\n10\n250.0\n20\n50.0\n10\n250.0\n20\n180.0\n10\n50.0\n20\n180.0\n" +
-                // Road Area Hatch
                 "0\nHATCH\n8\nROAD\n2\nANSI31\n70\n0\n71\n0\n91\n1\n92\n3\n72\n0\n73\n1\n93\n4\n" +
                 "10\n350.0\n20\n50.0\n10\n550.0\n20\n50.0\n10\n550.0\n20\n350.0\n10\n350.0\n20\n350.0\n" +
-                // Column Circles
                 "0\nCIRCLE\n8\nWALLS\n10\n50.0\n20\n350.0\n40\n15.0\n" +
                 "0\nCIRCLE\n8\nWALLS\n10\n250.0\n20\n350.0\n40\n15.0\n" +
                 "0\nCIRCLE\n8\nWALLS\n10\n350.0\n20\n350.0\n40\n15.0\n" +
                 "0\nCIRCLE\n8\nWALLS\n10\n550.0\n20\n350.0\n40\n15.0\n" +
-                // Door Arc
                 "0\nARC\n8\nDOORS\n10\n300.0\n20\n200.0\n40\n40.0\n50\n0.0\n51\n90.0\n" +
-                // Labels / Text
                 "0\nTEXT\n8\nTEXT\n10\n90.0\n20\n110.0\n40\n18.0\n1\nVISITOR PARKING\n" +
                 "0\nTEXT\n8\nTEXT\n10\n390.0\n20\n200.0\n40\n18.0\n1\nACCESS ROAD\n" +
                 "0\nTEXT\n8\nTEXT\n10\n90.0\n20\n280.0\n40\n22.0\n1\nCOMMERCIAL OFFICE\n" +
-                "0\nTEXT\n8\nTEXT\n10\n180.0\n20\n420.0\n40\n26.0\n1\nSAMPLE ARCHITECTURAL PLAN (CADCONVERT)\n" +
+                "0\nTEXT\n8\nTEXT\n10\n180.0\n20\n420.0\n40\n26.0\n1\nSAMPLE ARCHITECTURAL PLAN (DOCCONVERT)\n" +
                 "0\nENDSEC\n0\nEOF\n";
     }
 }
