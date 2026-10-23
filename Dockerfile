@@ -24,7 +24,7 @@ EXPOSE 8080
 
 # Environment configuration
 ENV PORT=8080
-ENV JAVA_OPTS="-Xmx2048m -Djava.awt.headless=true"
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.awt.headless=true"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
