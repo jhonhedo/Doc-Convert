@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  cadconvert:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cadconvert-dxf-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - JAVA_OPTS=-Xmx2048m -Djava.awt.headless=true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
