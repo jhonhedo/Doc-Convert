@@ -207,8 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const name = file.name || 'unnamed.dxf';
-            if (!name.toLowerCase().endsWith('.dxf')) {
-                alert(`"${name}" is not a DXF file. Only .dxf drawings are supported.`);
+            const isDxf = name.toLowerCase().endsWith('.dxf');
+            const isDwg = name.toLowerCase().endsWith('.dwg');
+            if (!isDxf && !isDwg) {
+                alert(`"${name}" is not a supported CAD drawing. Please select a .dxf or .dwg file.`);
                 continue;
             }
 
@@ -327,9 +329,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 }
 
+                const srcFormat = item.name.toLowerCase().endsWith('.dwg') ? 'DWG' : 'DXF';
+
                 row.innerHTML = `
                     <div class="queue-item-info">
-                        <div class="queue-item-icon" aria-hidden="true">CAD</div>
+                        <div class="queue-item-icon" aria-hidden="true">${srcFormat}</div>
                         <div class="queue-item-meta">
                             <span class="queue-item-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
                             <span class="queue-item-size">${formatBytes(item.size)}</span>
@@ -345,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div class="queue-item-transition" aria-hidden="true">
-                        <span class="format-pill dxf">DXF</span>
+                        <span class="format-pill dxf">${srcFormat}</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                         <span class="format-pill pdf">PDF</span>
                     </div>
@@ -391,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const id = btn.getAttribute('data-id');
                 const item = state.queue.find(it => it.id === id);
                 if (item && item.pdfBlob) {
-                    downloadBlob(item.pdfBlob, item.name.replace(/\.dxf$/i, '.pdf'));
+                    downloadBlob(item.pdfBlob, item.name.replace(/\.(dxf|dwg)$/i, '.pdf'));
                 }
             });
         });
@@ -522,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (finishedItems.length === 0) return;
 
             if (finishedItems.length === 1) {
-                downloadBlob(finishedItems[0].pdfBlob, finishedItems[0].name.replace(/\.dxf$/i, '.pdf'));
+                downloadBlob(finishedItems[0].pdfBlob, finishedItems[0].name.replace(/\.(dxf|dwg)$/i, '.pdf'));
                 return;
             }
 
@@ -536,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const zip = new JSZip();
                 finishedItems.forEach(it => {
-                    const pdfName = it.name.replace(/\.dxf$/i, '.pdf');
+                    const pdfName = it.name.replace(/\.(dxf|dwg)$/i, '.pdf');
                     zip.file(pdfName, it.pdfBlob);
                 });
 
@@ -559,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     function openPreviewModal(item) {
         state.currentPreviewItem = item;
-        if (previewFilename) previewFilename.textContent = item.name.replace(/\.dxf$/i, '.pdf');
+        if (previewFilename) previewFilename.textContent = item.name.replace(/\.(dxf|dwg)$/i, '.pdf');
         if (previewModal) previewModal.style.display = 'flex';
 
         if (item.previewB64) {
@@ -613,7 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnPreviewDownload) {
         btnPreviewDownload.addEventListener('click', () => {
             if (state.currentPreviewItem && state.currentPreviewItem.pdfBlob) {
-                downloadBlob(state.currentPreviewItem.pdfBlob, state.currentPreviewItem.name.replace(/\.dxf$/i, '.pdf'));
+                downloadBlob(state.currentPreviewItem.pdfBlob, state.currentPreviewItem.name.replace(/\.(dxf|dwg)$/i, '.pdf'));
             }
         });
     }
