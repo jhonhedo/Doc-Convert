@@ -1,6 +1,9 @@
 package com.converter.dxf.server;
 
 import com.converter.dxf.DxfToPdfConverter;
+import com.converter.dxf.dwg.DwgConverterBridge;
+import com.converter.dxf.pdf.PdfCompressService;
+import com.converter.dxf.pdf.PdfMergeService;
 import com.converter.dxf.render.hatch.DynamicHatchRuleEngine;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -26,7 +29,11 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Production-ready HTTP server providing REST API and DocConvert Web UI
- * for the DXF to PDF vector conversion engine.
+ * for the CAD & PDF Vector Utility Suite:
+ * - DXF to Vector PDF Converter
+ * - DWG to Vector PDF Converter (via LibreDWG bridge)
+ * - Vector-Safe PDF Merge Utility
+ * - Multi-tier PDF Compression Engine
  */
 public class DxfServer {
 
@@ -76,31 +83,39 @@ public class DxfServer {
         // Health check endpoint
         server.createContext("/api/health", new HealthHandler());
 
-        // Conversion endpoint (returns raw PDF binary or JSON with base64)
+        // CAD to PDF Conversion endpoints
         server.createContext("/api/convert", new ConvertHandler());
+        server.createContext("/api/convert/dwg", new ConvertHandler());
 
         // Preview endpoint (converts & renders Page 1 to PNG thumbnail)
         server.createContext("/api/preview", new PreviewHandler());
 
+        // PDF Utility Endpoints
+        server.createContext("/api/pdf/merge", new PdfMergeHandler());
+        server.createContext("/api/pdf/compress", new PdfCompressHandler());
+
         // Sample DXF download endpoint
         server.createContext("/api/sample", new SampleHandler());
 
-        // Static files & UI handler (root and /static/*)
+        // Static files & clean SEO URLs handler (root and /static/*)
         server.createContext("/", new StaticFileHandler());
     }
 
     public void start() {
         server.start();
         System.out.println("=================================================================");
-        System.out.println("   DocConvert - DXF to Vector PDF Web Application & REST API");
+        System.out.println("   CADConvert / DocConvert - CAD & PDF Multi-Tool Utility Suite");
         System.out.println("=================================================================");
-        System.out.println(" Server running at: http://" + host + ":" + port + "/");
-        System.out.println(" REST API Endpoint: http://" + host + ":" + port + "/api/convert");
-        System.out.println(" Preview Endpoint:  http://" + host + ":" + port + "/api/preview");
-        System.out.println(" Health Check:      http://" + host + ":" + port + "/api/health");
-        System.out.println(" Max Upload Limit:  " + (MAX_UPLOAD_BYTES / (1024 * 1024)) + " MB");
-        System.out.println(" Max Concurrency:   " + MAX_CONCURRENT_CONVERSIONS + " workers");
-        System.out.println(" Storage Policy:    100% In-Memory (Zero Disk Retention)");
+        System.out.println(" Server running at:     http://" + host + ":" + port + "/");
+        System.out.println(" CAD Convert API:       http://" + host + ":" + port + "/api/convert");
+        System.out.println(" DWG Convert API:       http://" + host + ":" + port + "/api/convert/dwg");
+        System.out.println(" PDF Merge API:         http://" + host + ":" + port + "/api/pdf/merge");
+        System.out.println(" PDF Compress API:      http://" + host + ":" + port + "/api/pdf/compress");
+        System.out.println(" Health Check:          http://" + host + ":" + port + "/api/health");
+        System.out.println(" Max Upload Limit:      " + (MAX_UPLOAD_BYTES / (1024 * 1024)) + " MB");
+        System.out.println(" Max Concurrency:       " + MAX_CONCURRENT_CONVERSIONS + " workers");
+        System.out.println(" LibreDWG CLI Bridge:   " + (DwgConverterBridge.isDwg2DxfAvailable() ? "AVAILABLE" : "CONTAINER-ONLY"));
+        System.out.println(" Storage Policy:        100% In-Memory (Zero Disk Retention)");
         System.out.println("=================================================================");
     }
 
@@ -135,11 +150,11 @@ public class DxfServer {
             app.start();
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("\nShutting down DocConvert Server...");
+                System.out.println("\nShutting down CADConvert Server...");
                 app.stop(1);
             }));
         } catch (IOException e) {
-            System.err.println("Fatal: Failed to start DxfServer: " + e.getMessage());
+            System.err.println("Fatal: Failed to start server: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }
@@ -159,10 +174,16 @@ public class DxfServer {
             }
 
             long uptimeSec = (System.currentTimeMillis() - START_TIME) / 1000;
+            boolean dwgBridge = DwgConverterBridge.isDwg2DxfAvailable();
+            Runtime rt = Runtime.getRuntime();
+            long freeMem = rt.freeMemory() / (1024 * 1024);
+            long totalMem = rt.totalMemory() / (1024 * 1024);
+
             String json = String.format(
-                    "{\"status\":\"UP\",\"service\":\"DocConvert CAD-to-PDF Engine\",\"version\":\"1.0.0\"," +
-                    "\"uptimeSeconds\":%d,\"maxUploadMb\":%d}",
-                    uptimeSec, (MAX_UPLOAD_BYTES / (1024 * 1024))
+                    "{\"status\":\"UP\",\"service\":\"CADConvert Multi-Tool Suite\",\"version\":\"1.2.0\"," +
+                    "\"uptimeSeconds\":%d,\"maxUploadMb\":%d,\"dwgBridgeAvailable\":%b," +
+                    "\"jvmMemoryMb\":{\"free\":%d,\"total\":%d},\"tools\":[\"dxf-to-pdf\",\"dwg-to-pdf\",\"merge-pdf\",\"compress-pdf\"]}",
+                    uptimeSec, (MAX_UPLOAD_BYTES / (1024 * 1024)), dwgBridge, freeMem, totalMem
             );
 
             byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
@@ -204,9 +225,28 @@ public class DxfServer {
                 return;
             }
 
+            // DWG binary conversion handling
+            boolean isDwg = (upload.filename != null && upload.filename.toLowerCase().endsWith(".dwg"))
+                    || exchange.getRequestURI().getPath().endsWith("/dwg")
+                    || DwgConverterBridge.isDwgBinary(upload.binaryData);
+
+            if (isDwg) {
+                if (upload.binaryData == null || upload.binaryData.length == 0) {
+                    sendError(exchange, 400, "EMPTY_INPUT", "Missing DWG file binary content.");
+                    return;
+                }
+                try {
+                    upload.dxfContent = DwgConverterBridge.convertDwgToDxf(upload.binaryData);
+                } catch (DwgConverterBridge.DwgBridgeException e) {
+                    logOp("CONVERT_DWG", reqId, 422, System.currentTimeMillis() - startTime, upload.binaryData.length, 0, "DwgBridgeFailed");
+                    sendError(exchange, 422, "DWG_CONVERSION_UNAVAILABLE", e.getMessage());
+                    return;
+                }
+            }
+
             if (upload.dxfContent == null || upload.dxfContent.trim().isEmpty()) {
                 logOp("CONVERT", reqId, 400, System.currentTimeMillis() - startTime, 0, 0, "EmptyContent");
-                sendError(exchange, 400, "EMPTY_INPUT", "Missing DXF file content in request body.");
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing DXF or DWG file content in request body.");
                 return;
             }
 
@@ -218,7 +258,7 @@ public class DxfServer {
 
             boolean acquired = false;
             try {
-                acquired = CONVERSION_SEMAPHORE.tryAcquire(3, TimeUnit.SECONDS);
+                acquired = CONVERSION_SEMAPHORE.tryAcquire(5, TimeUnit.SECONDS);
                 if (!acquired) {
                     logOp("CONVERT", reqId, 429, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "ConcurrencyLimitReached");
                     sendError(exchange, 429, "RATE_LIMITED", "Server is busy processing maximum concurrent drawings. Please retry in a few moments.");
@@ -244,13 +284,11 @@ public class DxfServer {
                     if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
                         try {
                             previewBytes = renderPreviewImage(doc, Math.min(upload.dpi, 300));
-                        } catch (Exception ignored) {
-                            // Non-fatal preview rasterization failure
-                        }
+                        } catch (Exception ignored) {}
                     }
                 }
 
-                String baseName = upload.filename != null ? upload.filename.replaceAll("(?i)\\.dxf$", "") : "drawing";
+                String baseName = upload.filename != null ? upload.filename.replaceAll("(?i)\\.(dxf|dwg)$", "") : "drawing";
                 baseName = baseName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
                 if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
@@ -284,7 +322,7 @@ public class DxfServer {
 
             } catch (Exception e) {
                 logOp("CONVERT", reqId, 500, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "Error=" + e.getClass().getSimpleName());
-                sendError(exchange, 500, "CONVERSION_FAILED", "Failed to compile CAD drawing into vector PDF. The file may contain unsupported or damaged geometry.");
+                sendError(exchange, 500, "CONVERSION_FAILED", "Failed to compile CAD drawing into vector PDF: " + e.getMessage());
             } finally {
                 if (acquired) {
                     CONVERSION_SEMAPHORE.release();
@@ -323,9 +361,22 @@ public class DxfServer {
                 return;
             }
 
+            // DWG handling
+            boolean isDwg = (upload.filename != null && upload.filename.toLowerCase().endsWith(".dwg"))
+                    || DwgConverterBridge.isDwgBinary(upload.binaryData);
+
+            if (isDwg) {
+                try {
+                    upload.dxfContent = DwgConverterBridge.convertDwgToDxf(upload.binaryData);
+                } catch (DwgConverterBridge.DwgBridgeException e) {
+                    sendError(exchange, 422, "DWG_CONVERSION_UNAVAILABLE", e.getMessage());
+                    return;
+                }
+            }
+
             if (upload.dxfContent == null || upload.dxfContent.trim().isEmpty()) {
                 logOp("PREVIEW", reqId, 400, System.currentTimeMillis() - startTime, 0, 0, "EmptyContent");
-                sendError(exchange, 400, "EMPTY_INPUT", "Missing DXF file content.");
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing DXF or DWG file content.");
                 return;
             }
 
@@ -337,7 +388,7 @@ public class DxfServer {
 
             boolean acquired = false;
             try {
-                acquired = CONVERSION_SEMAPHORE.tryAcquire(3, TimeUnit.SECONDS);
+                acquired = CONVERSION_SEMAPHORE.tryAcquire(5, TimeUnit.SECONDS);
                 if (!acquired) {
                     logOp("PREVIEW", reqId, 429, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "ConcurrencyLimitReached");
                     sendError(exchange, 429, "RATE_LIMITED", "Server is busy processing maximum concurrent drawings. Please retry in a few moments.");
@@ -365,11 +416,178 @@ public class DxfServer {
 
             } catch (Exception e) {
                 logOp("PREVIEW", reqId, 500, System.currentTimeMillis() - startTime, upload.dxfContent.length(), 0, "Error=" + e.getClass().getSimpleName());
-                sendError(exchange, 500, "PREVIEW_FAILED", "Preview generation failed. The drawing may contain unsupported CAD elements.");
+                sendError(exchange, 500, "PREVIEW_FAILED", "Preview generation failed: " + e.getMessage());
             } finally {
                 if (acquired) {
                     CONVERSION_SEMAPHORE.release();
                 }
+            }
+        }
+    }
+
+    /**
+     * Handler for PDF Merging (POST /api/pdf/merge).
+     * Accepts 2 or more PDF documents in multipart/form-data, merges them in volatile memory,
+     * and streams back the unified PDF.
+     */
+    private static class PdfMergeHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            addCorsHeaders(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "METHOD_NOT_ALLOWED", "Method Not Allowed. Use POST.");
+                return;
+            }
+
+            String reqId = UUID.randomUUID().toString().substring(0, 8);
+            long startTime = System.currentTimeMillis();
+            ParsedUpload upload;
+
+            try {
+                upload = parseRequest(exchange);
+            } catch (PayloadTooLargeException e) {
+                sendError(exchange, 413, "PAYLOAD_TOO_LARGE", e.getMessage());
+                return;
+            } catch (Exception e) {
+                sendError(exchange, 400, "BAD_REQUEST", "Unable to parse request body.");
+                return;
+            }
+
+            List<byte[]> pdfList = new ArrayList<>();
+            for (UploadedFile file : upload.files) {
+                if (file.data != null && file.data.length > 0) {
+                    pdfList.add(file.data);
+                }
+            }
+
+            if (pdfList.size() < 2) {
+                sendError(exchange, 400, "INSUFFICIENT_FILES", "Merging requires at least 2 PDF documents. Received " + pdfList.size() + ".");
+                return;
+            }
+
+            try {
+                PdfMergeService.MergeResult result = PdfMergeService.merge(pdfList);
+                byte[] mergedBytes = result.getPdfBytes();
+                String outFilename = upload.filename != null && upload.filename.toLowerCase().endsWith(".pdf")
+                        ? upload.filename : "merged_documents.pdf";
+
+                if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
+                    String b64 = Base64.getEncoder().encodeToString(mergedBytes);
+                    String json = String.format(
+                            "{\"success\":true,\"filename\":\"%s\",\"totalPages\":%d,\"sourceFilesCount\":%d,\"fileSizeBytes\":%d,\"pdfBase64\":\"%s\"}",
+                            escapeJson(outFilename), result.getTotalPages(), result.getSourceFilesCount(), mergedBytes.length, b64
+                    );
+
+                    byte[] resp = json.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                    exchange.sendResponseHeaders(200, resp.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(resp); }
+                } else {
+                    Headers headers = exchange.getResponseHeaders();
+                    headers.set("Content-Type", "application/pdf");
+                    headers.set("Content-Disposition", "attachment; filename=\"" + escapeJson(outFilename) + "\"");
+                    headers.set("Content-Length", String.valueOf(mergedBytes.length));
+                    headers.set("X-Total-Pages", String.valueOf(result.getTotalPages()));
+                    headers.set("X-Source-Files", String.valueOf(result.getSourceFilesCount()));
+                    exchange.sendResponseHeaders(200, mergedBytes.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(mergedBytes); }
+                }
+
+                logOp("MERGE_PDF", reqId, 200, System.currentTimeMillis() - startTime, 0, mergedBytes.length, "Files=" + pdfList.size());
+            } catch (Exception e) {
+                logOp("MERGE_PDF", reqId, 500, System.currentTimeMillis() - startTime, 0, 0, "Error=" + e.getMessage());
+                sendError(exchange, 500, "MERGE_FAILED", "Failed to merge PDF documents: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Handler for PDF Compression (POST /api/pdf/compress).
+     * Accepts a PDF document and a compression level query parameter (low, medium, high),
+     * applies in-memory raster downsampling and Flate recompression, and streams back the result.
+     */
+    private static class PdfCompressHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            addCorsHeaders(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "METHOD_NOT_ALLOWED", "Method Not Allowed. Use POST.");
+                return;
+            }
+
+            String reqId = UUID.randomUUID().toString().substring(0, 8);
+            long startTime = System.currentTimeMillis();
+            ParsedUpload upload;
+
+            try {
+                upload = parseRequest(exchange);
+            } catch (PayloadTooLargeException e) {
+                sendError(exchange, 413, "PAYLOAD_TOO_LARGE", e.getMessage());
+                return;
+            } catch (Exception e) {
+                sendError(exchange, 400, "BAD_REQUEST", "Unable to parse request body.");
+                return;
+            }
+
+            byte[] pdfBytes = upload.binaryData;
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                if (!upload.files.isEmpty() && upload.files.get(0).data != null) {
+                    pdfBytes = upload.files.get(0).data;
+                    upload.filename = upload.files.get(0).filename;
+                }
+            }
+
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing PDF document content to compress.");
+                return;
+            }
+
+            PdfCompressService.CompressionLevel level = PdfCompressService.CompressionLevel.fromString(upload.compressLevel);
+
+            try {
+                PdfCompressService.CompressResult result = PdfCompressService.compress(pdfBytes, level);
+                byte[] outBytes = result.getPdfBytes();
+                String outName = upload.filename != null ? upload.filename.replaceAll("(?i)\\.pdf$", "") + "_compressed.pdf" : "compressed.pdf";
+
+                if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
+                    String b64 = Base64.getEncoder().encodeToString(outBytes);
+                    String json = String.format(Locale.US,
+                            "{\"success\":true,\"filename\":\"%s\",\"originalSize\":%d,\"compressedSize\":%d," +
+                            "\"savingsPercentage\":%.1f,\"totalPages\":%d,\"optimizedImages\":%d,\"pdfBase64\":\"%s\"}",
+                            escapeJson(outName), result.getOriginalSize(), result.getCompressedSize(),
+                            result.getSavingsPercentage(), result.getTotalPages(), result.getOptimizedImagesCount(), b64
+                    );
+
+                    byte[] resp = json.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                    exchange.sendResponseHeaders(200, resp.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(resp); }
+                } else {
+                    Headers headers = exchange.getResponseHeaders();
+                    headers.set("Content-Type", "application/pdf");
+                    headers.set("Content-Disposition", "attachment; filename=\"" + escapeJson(outName) + "\"");
+                    headers.set("Content-Length", String.valueOf(outBytes.length));
+                    headers.set("X-Original-Size", String.valueOf(result.getOriginalSize()));
+                    headers.set("X-Compressed-Size", String.valueOf(result.getCompressedSize()));
+                    headers.set("X-Savings-Percent", String.format(Locale.US, "%.1f", result.getSavingsPercentage()));
+                    exchange.sendResponseHeaders(200, outBytes.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(outBytes); }
+                }
+
+                logOp("COMPRESS_PDF", reqId, 200, System.currentTimeMillis() - startTime, result.getOriginalSize(), result.getCompressedSize(), "Saved=" + String.format(Locale.US, "%.1f%%", result.getSavingsPercentage()));
+            } catch (Exception e) {
+                logOp("COMPRESS_PDF", reqId, 500, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Error=" + e.getMessage());
+                sendError(exchange, 500, "COMPRESSION_FAILED", "Failed to compress PDF: " + e.getMessage());
             }
         }
     }
@@ -431,23 +649,29 @@ public class DxfServer {
             byte[] content = null;
             String relativePath = path.startsWith("/") ? path.substring(1) : path;
 
-            // 1. Try file system first (allows hot reloading during development)
-            Path localPath = Paths.get(STATIC_DIR_OVERRIDE, relativePath);
-            if (Files.exists(localPath) && !Files.isDirectory(localPath)) {
-                content = Files.readAllBytes(localPath);
-            } else {
-                Path staticSub = Paths.get(STATIC_DIR_OVERRIDE, path);
-                if (Files.exists(staticSub) && !Files.isDirectory(staticSub)) {
-                    content = Files.readAllBytes(staticSub);
-                }
+            // Handle clean SEO URLs without extensions (e.g., /merge-pdf -> merge-pdf.html)
+            List<String> candidatePaths = new ArrayList<>();
+            candidatePaths.add(relativePath);
+            if (!relativePath.contains(".")) {
+                candidatePaths.add(relativePath + ".html");
             }
 
-            // 2. If not found on disk, read from Classpath (when running inside JAR)
-            if (content == null) {
-                String resourcePath = "/static/" + relativePath;
+            for (String cand : candidatePaths) {
+                // 1. Try file system first (for local live edits)
+                Path localPath = Paths.get(STATIC_DIR_OVERRIDE, cand);
+                if (Files.exists(localPath) && !Files.isDirectory(localPath)) {
+                    content = Files.readAllBytes(localPath);
+                    path = cand;
+                    break;
+                }
+
+                // 2. Classpath resource
+                String resourcePath = "/static/" + cand;
                 try (InputStream is = DxfServer.class.getResourceAsStream(resourcePath)) {
                     if (is != null) {
                         content = readAllBytesBounded(is, 10 * 1024 * 1024);
+                        path = cand;
+                        break;
                     }
                 }
             }
@@ -478,12 +702,25 @@ public class DxfServer {
         }
     }
 
+    public static class UploadedFile {
+        public String filename = "file";
+        public byte[] data = new byte[0];
+
+        public UploadedFile(String filename, byte[] data) {
+            this.filename = filename;
+            this.data = data;
+        }
+    }
+
     private static class ParsedUpload {
         String dxfContent;
+        byte[] binaryData;
         String filename = "drawing.dxf";
         List<String> targetLayers = new ArrayList<>();
+        List<UploadedFile> files = new ArrayList<>();
         boolean returnJson = false;
         String format = "pdf";
+        String compressLevel = "medium";
         int dpi = 150;
     }
 
@@ -495,6 +732,7 @@ public class DxfServer {
         String xFormat = headers.getFirst("X-Output-Format");
         String xFilename = headers.getFirst("X-Filename");
         String xLayers = headers.getFirst("X-Target-Layers");
+        String xLevel = headers.getFirst("X-Compression-Level");
 
         if (accept != null && accept.contains("application/json")) {
             parsed.returnJson = true;
@@ -504,6 +742,9 @@ public class DxfServer {
         }
         if (xFilename != null && !xFilename.trim().isEmpty()) {
             parsed.filename = xFilename.trim();
+        }
+        if (xLevel != null && !xLevel.trim().isEmpty()) {
+            parsed.compressLevel = xLevel.trim();
         }
         if (xLayers != null && !xLayers.trim().isEmpty()) {
             for (String l : xLayers.split(",")) {
@@ -517,6 +758,7 @@ public class DxfServer {
             Map<String, String> qMap = parseQuery(query);
             if (qMap.containsKey("filename")) parsed.filename = qMap.get("filename");
             if (qMap.containsKey("format") && "json".equalsIgnoreCase(qMap.get("format"))) parsed.returnJson = true;
+            if (qMap.containsKey("level")) parsed.compressLevel = qMap.get("level");
             if (qMap.containsKey("dpi")) {
                 try { parsed.dpi = Integer.parseInt(qMap.get("dpi")); } catch (Exception ignored) {}
             }
@@ -534,6 +776,7 @@ public class DxfServer {
             parseMultipart(bodyBytes, contentType, parsed);
         } else {
             // Raw text or binary
+            parsed.binaryData = bodyBytes;
             parsed.dxfContent = new String(bodyBytes, StandardCharsets.UTF_8);
         }
 
@@ -544,11 +787,9 @@ public class DxfServer {
         if (content == null || content.trim().isEmpty()) {
             return false;
         }
-        // Binary DXF sentinel
         if (content.startsWith("AutoCAD Binary DXF")) {
             return true;
         }
-        // Check first 4096 characters for standard DXF keywords
         String head = content.length() > 4096 ? content.substring(0, 4096) : content;
         return head.contains("SECTION") || head.contains("ENTITIES") || head.contains("HEADER") || head.contains("BLOCKS") || head.contains("TABLES") || content.contains("EOF");
     }
@@ -584,23 +825,36 @@ public class DxfServer {
                 dataEnd -= 2;
             }
 
-            if (headerText.contains("name=\"file\"") || headerText.contains("filename=")) {
+            byte[] partBytes = Arrays.copyOfRange(body, dataStart, dataEnd);
+
+            if (headerText.contains("filename=") || headerText.contains("name=\"file\"") || headerText.contains("name=\"files\"")) {
+                String partFilename = "upload";
                 int fnIdx = headerText.indexOf("filename=\"");
                 if (fnIdx != -1) {
                     int fnEnd = headerText.indexOf("\"", fnIdx + 10);
                     if (fnEnd != -1) {
-                        out.filename = headerText.substring(fnIdx + 10, fnEnd);
+                        partFilename = headerText.substring(fnIdx + 10, fnEnd);
                     }
                 }
-                out.dxfContent = new String(body, dataStart, dataEnd - dataStart, StandardCharsets.UTF_8);
+
+                out.files.add(new UploadedFile(partFilename, partBytes));
+
+                // First file becomes default primary
+                if (out.binaryData == null) {
+                    out.binaryData = partBytes;
+                    out.filename = partFilename;
+                    out.dxfContent = new String(partBytes, StandardCharsets.UTF_8);
+                }
             } else if (headerText.contains("name=\"layers\"")) {
-                String val = new String(body, dataStart, dataEnd - dataStart, StandardCharsets.UTF_8).trim();
+                String val = new String(partBytes, StandardCharsets.UTF_8).trim();
                 for (String l : val.split(",")) {
                     if (!l.trim().isEmpty()) out.targetLayers.add(l.trim());
                 }
             } else if (headerText.contains("name=\"format\"")) {
-                out.format = new String(body, dataStart, dataEnd - dataStart, StandardCharsets.UTF_8).trim();
+                out.format = new String(partBytes, StandardCharsets.UTF_8).trim();
                 if ("json".equalsIgnoreCase(out.format)) out.returnJson = true;
+            } else if (headerText.contains("name=\"level\"")) {
+                out.compressLevel = new String(partBytes, StandardCharsets.UTF_8).trim();
             }
         }
     }
@@ -648,7 +902,7 @@ public class DxfServer {
         Headers h = exchange.getResponseHeaders();
         h.set("Access-Control-Allow-Origin", "*");
         h.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        h.set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, X-Requested-With, X-Filename, X-Target-Layers, X-Output-Format");
+        h.set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, X-Requested-With, X-Filename, X-Target-Layers, X-Output-Format, X-Compression-Level");
     }
 
     private static void sendError(HttpExchange exchange, int status, String code, String message) throws IOException {
@@ -659,10 +913,6 @@ public class DxfServer {
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
-    }
-
-    private static void sendError(HttpExchange exchange, int status, String message) throws IOException {
-        sendError(exchange, status, "ERROR_" + status, message);
     }
 
     private static void logOp(String op, String reqId, int status, long durationMs, long inBytes, long outBytes, String note) {
@@ -692,6 +942,7 @@ public class DxfServer {
         if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
         if (lower.endsWith(".ico")) return "image/x-icon";
         if (lower.endsWith(".dxf")) return "application/dxf";
+        if (lower.endsWith(".dwg")) return "application/acad";
         if (lower.endsWith(".pdf")) return "application/pdf";
         if (lower.endsWith(".xml")) return "application/xml; charset=UTF-8";
         if (lower.endsWith(".txt")) return "text/plain; charset=UTF-8";
@@ -703,7 +954,6 @@ public class DxfServer {
         org.apache.pdfbox.pdmodel.common.PDRectangle cropBox = doc.getPage(0).getCropBox();
         float width = cropBox.getWidth();
         float height = cropBox.getHeight();
-        // Adaptive resolution scaling: map large sheets to a crisp 1800px viewport
         float maxDim = (targetDpi > 200) ? 2400f : 1800f;
         float scale = Math.min(1.0f, maxDim / Math.max(width, height));
         BufferedImage img = renderer.renderImage(0, scale);
@@ -738,9 +988,6 @@ public class DxfServer {
                 .replace("\t", "\\t");
     }
 
-    /**
-     * Generates a sample architectural CAD floorplan DXF with walls, rooms, hatches, and labels.
-     */
     private static String generateSampleDxf() {
         return "0\nSECTION\n2\nHEADER\n0\nENDSEC\n" +
                 "0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n4\n" +

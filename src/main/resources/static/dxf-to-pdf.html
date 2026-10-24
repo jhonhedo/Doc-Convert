@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast DXF to Vector PDF Converter - In-Memory & Secure | CADConvert</title>
+    <meta name="description" content="Convert AutoCAD DXF to high-precision vector PDF in-memory. Preserves layers, true lineweights, architectural hatches, and bezier curves with zero disk retention.">
+    <link rel="canonical" href="https://docconvert.net/dxf-to-pdf">
+    
+    <!-- OpenGraph & Twitter -->
+    <meta property="og:title" content="Fast DXF to Vector PDF Converter - In-Memory & Secure | CADConvert">
+    <meta property="og:description" content="Online AutoCAD DXF to Vector PDF converter with layer control, lineweights, and zero permanent disk storage.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://docconvert.net/dxf-to-pdf">
+    <!-- Favicon & App Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+
+    <!-- Fonts & Styles -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- JSON-LD FAQPage Schema Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How does CADConvert convert DXF files into vector PDF without rasterization?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Our Java CAD engine compiles native DXF entities—such as lines, arcs, polylines, and NURBS splines—directly into native Adobe PDFBox vector path instructions. The resulting PDF scales infinitely without pixelation."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which AutoCAD DXF versions are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The converter parses both ASCII and binary DXF files across AutoCAD versions R12, R14, 2000, 2004, 2007, 2010, 2013, and 2018+. It natively evaluates ECS, OCS arbitrary axis vectors, and 3D transforms."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is my proprietary CAD drawing stored on your server?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. CADConvert runs a strict 100% in-memory processing pipeline. Drawings are parsed in volatile RAM, converted to vector PDF streams, and immediately reclaimed by garbage collection. Zero files are stored on disk."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I convert multiple DXF files in a single batch?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You can select or drop multiple DXF drawings simultaneously. Once processed, you can download individual vector PDFs or export them all together in a single ZIP package."
+          }
+        }
+      ]
+    }
+    </script>
+</head>
+<body class="blueprint-theme">
+    <div class="cad-bg-grid" aria-hidden="true"></div>
+    <div class="cad-radial-glow top-left" aria-hidden="true"></div>
+    <div class="cad-radial-glow bottom-right" aria-hidden="true"></div>
+
+    <!-- Navigation Header -->
+    <header class="navbar" role="banner">
+        <div class="nav-container">
+            <a href="/" class="brand-logo" aria-label="CADConvert Homepage">
+                <div class="logo-icon" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="26" height="26" rx="6" stroke="#00F0FF" stroke-width="2" stroke-dasharray="4 2"/>
+                        <path d="M8 24L16 8L24 24" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="16" cy="8" r="2.5" fill="#00F0FF"/>
+                        <circle cx="8" cy="24" r="2.5" fill="#38BDF8"/>
+                        <circle cx="24" cy="24" r="2.5" fill="#38BDF8"/>
+                        <path d="M11 19H21" stroke="#00F0FF" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">CAD<span class="highlight">Convert</span></span>
+                    <span class="brand-subtitle">CAD &amp; PDF VECTOR SUITE</span>
+                </div>
+            </a>
+
+            <nav class="nav-links" aria-label="Main Navigation">
+                <div class="nav-dropdown">
+                    <button class="nav-dropdown-toggle active" aria-expanded="false">
+                        <span>Tools</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="dropdown-group-title">CAD Converters</div>
+                        <a href="/dxf-to-pdf" class="dropdown-item active">
+                            <div class="dropdown-item-icon">DXF</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DXF to PDF</span>
+                                <span class="dropdown-item-desc">Vector CAD drawing conversion</span>
+                            </div>
+                        </a>
+                        <a href="/dwg-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DWG</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DWG to PDF</span>
+                                <span class="dropdown-item-desc">Native AutoCAD binary support</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-group-title">PDF Optimization</div>
+                        <a href="/merge-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Merge PDF</span>
+                                <span class="dropdown-item-desc">Combine multi-sheet sets</span>
+                            </div>
+                        </a>
+                        <a href="/compress-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Compress PDF</span>
+                                <span class="dropdown-item-desc">Downsample without vector loss</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/tools" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">All Tools Directory</span>
+                                <span class="dropdown-item-desc">Browse full utility suite</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="/tools" class="nav-link">Hub</a>
+                <a href="#how-it-works" class="nav-link">How It Works</a>
+                <a href="#specs-section" class="nav-link">Specs</a>
+                <a href="#faq-section" class="nav-link">FAQ</a>
+            </nav>
+
+            <div class="nav-actions">
+                <div class="server-status-pill" id="server-status-badge">
+                    <span class="status-dot pulsing" aria-hidden="true"></span>
+                    <span class="status-label" id="status-text">Online</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-open-api">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+                    <span>REST API</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-badge">
+                <span class="badge-icon">⚡</span>
+                <span>IN-MEMORY CAD VECTOR PIPELINE</span>
+            </div>
+            <h1 class="hero-title">Fast DXF to Vector PDF Converter</h1>
+            <p class="hero-subtitle">
+                Compile AutoCAD <strong class="text-cyan">DXF drawings</strong> into high-fidelity <strong class="text-blue">Vector PDF documents</strong> in volatile memory. 
+                Full support for CAD layers, lineweights, true curves, and architectural hatches.
+            </p>
+        </section>
+
+        <!-- Converter Widget -->
+        <section class="converter-wrapper" id="converter-section" aria-label="DXF File Converter">
+            <div class="converter-card" id="drop-zone">
+                <div class="dropzone-content" id="dropzone-view">
+                    <div class="cad-crosshair-icon" aria-hidden="true">
+                        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4" class="cad-circle"/>
+                            <line x1="32" y1="4" x2="32" y2="60" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.4"/>
+                            <line x1="4" y1="32" x2="60" y2="32" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.4"/>
+                            <rect x="22" y="22" width="20" height="20" rx="3" stroke="#00F0FF" stroke-width="2"/>
+                            <path d="M26 32H38M32 26V38" stroke="#00F0FF" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+
+                    <h2 class="drop-title">Select DXF File or Drop Here</h2>
+                    <p class="drop-desc">Upload AutoCAD DXF drawings (ASCII or Binary, R12 through 2026)</p>
+
+                    <div class="drop-buttons">
+                        <label for="file-input" class="btn btn-primary btn-lg" id="btn-browse" tabindex="0" role="button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                            <span>Select DXF Files</span>
+                        </label>
+                        <input type="file" id="file-input" accept=".dxf" multiple style="display: none;">
+
+                        <button type="button" class="btn btn-glass btn-lg" id="btn-load-sample">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span>Load Sample CAD</span>
+                        </button>
+                    </div>
+
+                    <div class="drop-limits">
+                        <span>Max upload: 25 MB</span>
+                        <span class="dot-separator">•</span>
+                        <span>Vector PDF output</span>
+                        <span class="dot-separator">•</span>
+                        <span>Zero Disk Retention (RAM-Only)</span>
+                    </div>
+                </div>
+
+                <!-- Queue View -->
+                <div class="queue-container" id="queue-view" style="display: none;">
+                    <div class="queue-header">
+                        <div class="queue-header-title">
+                            <h3>Queued Files (<span id="queue-count">0</span>)</h3>
+                            <span class="queue-size" id="queue-total-size">0 KB</span>
+                        </div>
+                        <div class="queue-header-actions">
+                            <label for="add-more-input" class="btn btn-ghost btn-sm" tabindex="0" role="button">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                                <span>Add More</span>
+                            </label>
+                            <input type="file" id="add-more-input" accept=".dxf" multiple style="display: none;">
+
+                            <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-clear-queue">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                <span>Clear</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="queue-list" id="queue-list"></div>
+
+                    <div class="queue-footer">
+                        <div class="global-options-preview">
+                            <span class="text-muted">Target:</span>
+                            <span class="tag tag-cyan">Vector PDF</span>
+                            <span class="tag tag-blue" id="active-engine-badge">Dynamic Hatch: ON</span>
+                        </div>
+                        <div class="global-actions">
+                            <button type="button" class="btn btn-secondary btn-md" id="btn-global-settings">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                <span>CAD Options</span>
+                            </button>
+                            <button type="button" class="btn btn-primary btn-md glow" id="btn-convert-all">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                <span>Convert All</span>
+                            </button>
+                            <button type="button" class="btn btn-success btn-md" id="btn-download-all" style="display: none;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                <span>Download All (ZIP)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="section" id="how-it-works">
+            <div class="section-header">
+                <span class="section-tag">ENGINEERING WORKFLOW</span>
+                <h2 class="section-title">How to Convert DXF to Vector PDF in 3 Steps</h2>
+                <p class="section-subtitle">A straightforward in-memory pipeline designed for engineers and architects.</p>
+            </div>
+
+            <div class="steps-container">
+                <div class="step-card">
+                    <div class="step-num">01</div>
+                    <h3>Upload CAD File</h3>
+                    <p>Drop your 2D or 3D AutoCAD DXF drawing into the converter widget. Supports files up to 25 MB.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">02</div>
+                    <h3>Configure Sheet &amp; Hatches</h3>
+                    <p>Optionally choose sheet dimensions (A0–A4, Tabloid), specify inspection layers, or adjust lineweights.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">03</div>
+                    <h3>Stream Vector PDF</h3>
+                    <p>Our server-side Java engine renders clean vector paths directly into memory. Download your PDF instantly.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technical Specifications Table -->
+        <section class="section" id="specs-section">
+            <div class="section-header">
+                <span class="section-tag">ENGINEERING STANDARDS</span>
+                <h2 class="section-title">Technical Specifications &amp; Compatibility</h2>
+                <p class="section-subtitle">Deep CAD entity support compiled into open ISO 32000 PDF streams.</p>
+            </div>
+
+            <div class="specs-table-wrapper">
+                <table class="specs-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Supported Standards &amp; Behavior</th>
+                            <th>Engine Architecture</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Supported DXF Versions</strong></td>
+                            <td>AutoCAD R12, R14, 2000, 2004, 2007, 2010, 2013, 2018–2026 (ASCII &amp; Binary)</td>
+                            <td>Pure Java Clean-Room Tokenizer</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CAD Geometry Entities</strong></td>
+                            <td>LINE, POLYLINE, LWPOLYLINE (Bulges), CIRCLE, ARC, ELLIPSE, SPLINE (NURBS), 3DFACE, SOLID, HATCH, TEXT, MTEXT, DIMENSION</td>
+                            <td>Apache PDFBox Native Vector Content Streams</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Lineweight Compliance</strong></td>
+                            <td>Standard AutoCAD Lineweights (0.05 mm to 2.11 mm) dynamically mapped to PostScript points</td>
+                            <td>ISO 32000-1 Compliant Output</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Color Palette Reproduction</strong></td>
+                            <td>ACI (AutoCAD Color Index 1–255) calibrated table plus 24-bit TrueColor RGB</td>
+                            <td>Calibrated sRGB DeviceRGB ColorSpace</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Privacy &amp; Data Retention</strong></td>
+                            <td>Zero permanent disk storage. 100% volatile RAM memory pipeline with immediate GC</td>
+                            <td>Google Cloud Run Ephemeral Memory Execution</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Maximum Upload Limit</strong></td>
+                            <td>25 MB per drawing file (Supports multi-sheet architectural masterplans)</td>
+                            <td>Bounded In-Memory Buffer with Semaphore Guard</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="section" id="faq-section">
+            <div class="section-header">
+                <span class="section-tag">QUESTIONS &amp; ANSWERS</span>
+                <h2 class="section-title">Frequently Asked Questions</h2>
+            </div>
+
+            <div class="faq-accordion">
+                <details class="faq-item" open>
+                    <summary class="faq-question">
+                        <span>How does CADConvert convert DXF files into vector PDF without rasterization?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p>Our Java CAD engine compiles native DXF entities—such as lines, arcs, polylines, and NURBS splines—directly into native Adobe PDFBox vector path instructions. The resulting PDF scales infinitely without pixelation.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span>Which AutoCAD DXF versions are supported?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p>The converter parses both ASCII and binary DXF files across AutoCAD versions R12, R14, 2000, 2004, 2007, 2010, 2013, and 2018+. It natively evaluates ECS, OCS arbitrary axis vectors, and 3D transforms.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span>Is my proprietary CAD drawing stored on your server?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p>No. CADConvert runs a strict 100% in-memory processing pipeline. Drawings are parsed in volatile RAM, converted to vector PDF streams, and immediately reclaimed by garbage collection. Zero files are stored on disk.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span>Can I convert multiple DXF files in a single batch?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p>Yes. You can select or drop multiple DXF drawings simultaneously. Once processed, you can download individual vector PDFs or export them all together in a single ZIP package.</p>
+                    </div>
+                </details>
+            </div>
+        </section>
+    </main>
+
+    <!-- Settings Modal -->
+    <div class="modal-backdrop" id="settings-modal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00F0FF" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <h3>CAD Conversion Settings</h3>
+                </div>
+                <button class="modal-close" id="btn-close-settings">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="opt-hatch-mode">Dynamic Hatch Rule Engine</label>
+                    <select class="form-select" id="opt-hatch-mode">
+                        <option value="default" selected>Enabled (Dynamic Architectural &amp; Civil Patterns)</option>
+                        <option value="all">Force All Hatches as Solid</option>
+                        <option value="none">Disable Hatch Rendering</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="opt-target-layers">Target Inspection Layers</label>
+                    <input type="text" class="form-input" id="opt-target-layers" value="PARKING, ROAD, ACCESS_WIDTH, COVERED_AREA">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="opt-dpi">Preview Resolution (DPI)</label>
+                    <select class="form-select" id="opt-dpi">
+                        <option value="96">96 DPI (Fast Draft)</option>
+                        <option value="150" selected>150 DPI (Balanced)</option>
+                        <option value="300">300 DPI (High Precision)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-reset-settings">Reset Defaults</button>
+                <button type="button" class="btn btn-primary" id="btn-save-settings">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal-backdrop" id="preview-modal" style="display: none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="tag tag-cyan">PREVIEW</span>
+                    <h3 id="preview-filename">drawing.pdf</h3>
+                </div>
+                <div class="preview-header-actions">
+                    <button class="btn btn-primary btn-sm" id="btn-preview-download">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        <span>Download PDF</span>
+                    </button>
+                    <button class="modal-close" id="btn-close-preview">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body preview-body">
+                <div class="preview-viewport" id="preview-viewport">
+                    <img id="preview-img" src="" alt="CAD Vector Preview" style="display: none;">
+                    <div class="preview-loader" id="preview-loader">
+                        <div class="spinner"></div>
+                        <p>Generating Vector PDF Preview...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer preview-footer">
+                <span class="preview-meta">Native Vector PDF</span>
+                <span class="text-muted">In-Memory Vector Pipeline</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col brand-col">
+                <span class="brand-title">CAD<span class="highlight">Convert</span></span>
+                <p class="footer-desc">High-performance CAD and PDF vector utilities. In-memory conversions with zero permanent disk storage.</p>
+            </div>
+            <div class="footer-col">
+                <h4>CAD Tools</h4>
+                <ul>
+                    <li><a href="/dxf-to-pdf">DXF to PDF</a></li>
+                    <li><a href="/dwg-to-pdf">DWG to PDF</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>PDF Tools</h4>
+                <ul>
+                    <li><a href="/merge-pdf">Merge PDF</a></li>
+                    <li><a href="/compress-pdf">Compress PDF</a></li>
+                    <li><a href="/tools">All Tools</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Platform</h4>
+                <ul>
+                    <li><a href="mailto:support@docconvert.net">support@docconvert.net</a></li>
+                    <li><span class="text-muted">Storage: Volatile RAM</span></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-bottom-container">
+                <span>&copy; 2026 CADConvert.net. All rights reserved.</span>
+                <span class="footer-tag">CAD &bull; DXF &bull; Vector PDF</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

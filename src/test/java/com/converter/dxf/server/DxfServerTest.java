@@ -145,6 +145,105 @@ public class DxfServerTest {
         assertTrue(err.contains("EMPTY_INPUT"));
     }
 
+    @Test
+    public void testCleanSeoRoutes() throws Exception {
+        String[] routes = {"/dxf-to-pdf", "/dwg-to-pdf", "/merge-pdf", "/compress-pdf", "/tools"};
+        for (String route : routes) {
+            URL url = new URL("http://127.0.0.1:" + port + route);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            assertEquals(200, conn.getResponseCode(), "Failed for route: " + route);
+            assertTrue(conn.getContentType().contains("text/html"), "Wrong mime type for route: " + route);
+            String html = readStream(conn.getInputStream());
+            assertTrue(html.contains("CADConvert"), "Missing branding for route: " + route);
+        }
+    }
+
+    @Test
+    public void testPdfCompressEndpoint() throws Exception {
+        // Create simple dummy PDF
+        byte[] pdf;
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            doc.addPage(new org.apache.pdfbox.pdmodel.PDPage());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            doc.save(baos);
+            pdf = baos.toByteArray();
+        }
+
+        URL url = new URL("http://127.0.0.1:" + port + "/api/pdf/compress?level=medium");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/pdf");
+        conn.setRequestProperty("Accept", "application/json");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(pdf);
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        String json = readStream(conn.getInputStream());
+        assertTrue(json.contains("\"success\":true"));
+        assertTrue(json.contains("\"compressedSize\":"));
+        assertTrue(json.contains("\"pdfBase64\":"));
+    }
+
+    @Test
+    public void testPdfMergeEndpoint() throws Exception {
+        byte[] pdf1;
+        byte[] pdf2;
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            doc.addPage(new org.apache.pdfbox.pdmodel.PDPage());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            doc.save(baos);
+            pdf1 = baos.toByteArray();
+        }
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            doc.addPage(new org.apache.pdfbox.pdmodel.PDPage());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            doc.save(baos);
+            pdf2 = baos.toByteArray();
+        }
+
+        String boundary = "----DocConvertMergeBoundary123456";
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+        
+        // Part 1
+        body.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(("Content-Disposition: form-data; name=\"file\"; filename=\"doc1.pdf\"\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(("Content-Type: application/pdf\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(pdf1);
+        body.write("\r\n".getBytes(StandardCharsets.UTF_8));
+
+        // Part 2
+        body.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(("Content-Disposition: form-data; name=\"file\"; filename=\"doc2.pdf\"\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(("Content-Type: application/pdf\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(pdf2);
+        body.write("\r\n".getBytes(StandardCharsets.UTF_8));
+
+        body.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+
+        URL url = new URL("http://127.0.0.1:" + port + "/api/pdf/merge");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+        conn.setRequestProperty("Accept", "application/json");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(body.toByteArray());
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        String json = readStream(conn.getInputStream());
+        assertTrue(json.contains("\"success\":true"));
+        assertTrue(json.contains("\"totalPages\":2"));
+        assertTrue(json.contains("\"sourceFilesCount\":2"));
+        assertTrue(json.contains("\"pdfBase64\":"));
+    }
+
+
+
     private static String readStream(InputStream is) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte[] buf = new byte[1024];

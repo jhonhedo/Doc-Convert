@@ -14,6 +14,11 @@
     <meta name="twitter:title" content="DocConvert | DXF to Vector PDF Converter">
     <meta name="twitter:description" content="Convert AutoCAD DXF drawings to vector PDF documents in volatile memory.">
 
+    <!-- Favicon & App Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -30,7 +35,7 @@
     <!-- Navigation Header -->
     <header class="navbar" role="banner">
         <div class="nav-container">
-            <a href="/" class="brand-logo" id="brand-link" aria-label="DocConvert Homepage">
+            <a href="/" class="brand-logo" id="brand-link" aria-label="CADConvert Homepage">
                 <div class="logo-icon" aria-hidden="true">
                     <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="3" y="3" width="26" height="26" rx="6" stroke="#00F0FF" stroke-width="2" stroke-dasharray="4 2"/>
@@ -42,13 +47,68 @@
                     </svg>
                 </div>
                 <div class="brand-text">
-                    <span class="brand-title">Doc<span class="highlight">Convert</span></span>
-                    <span class="brand-subtitle">CAD &rarr; VECTOR PDF</span>
+                    <span class="brand-title">CAD<span class="highlight">Convert</span></span>
+                    <span class="brand-subtitle">CAD &amp; PDF VECTOR SUITE</span>
                 </div>
             </a>
 
             <nav class="nav-links" aria-label="Main Navigation">
-                <a href="#converter-section" class="nav-link active">Converter</a>
+                <div class="nav-dropdown">
+                    <button class="nav-dropdown-toggle active" aria-expanded="false" id="tools-dropdown-btn">
+                        <span>Tools</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="nav-dropdown-menu" id="tools-dropdown-menu">
+                        <div class="dropdown-group-title">CAD Converters</div>
+                        <a href="/dxf-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DXF</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DXF to PDF</span>
+                                <span class="dropdown-item-desc">Vector CAD drawing conversion</span>
+                            </div>
+                        </a>
+                        <a href="/dwg-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DWG</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DWG to PDF</span>
+                                <span class="dropdown-item-desc">Native AutoCAD binary support</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-group-title">PDF Optimization</div>
+                        <a href="/merge-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Merge PDF</span>
+                                <span class="dropdown-item-desc">Combine multi-sheet sets</span>
+                            </div>
+                        </a>
+                        <a href="/compress-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Compress PDF</span>
+                                <span class="dropdown-item-desc">Downsample without vector loss</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/tools" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">All Tools Directory</span>
+                                <span class="dropdown-item-desc">Browse full utility suite</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="/tools" class="nav-link">Hub</a>
+                <a href="#all-tools-section" class="nav-link">Tools Grid</a>
                 <a href="#features-section" class="nav-link">Features</a>
                 <a href="#format-specs" class="nav-link">Specs</a>
                 <a href="#api-section" class="nav-link">API Docs</a>
@@ -98,15 +158,15 @@
                         </svg>
                     </div>
 
-                    <h2 class="drop-title">Select DXF File or Drop Here</h2>
-                    <p class="drop-desc">Upload AutoCAD DXF drawings (ASCII or binary, R12 through 2018+)</p>
+                    <h2 class="drop-title">Select CAD Drawing or Drop Here</h2>
+                    <p class="drop-desc">Upload AutoCAD DXF or DWG drawings (ASCII or Binary, R12 through 2026)</p>
 
                     <div class="drop-buttons">
-                        <label for="file-input" class="btn btn-primary btn-lg" id="btn-browse" tabindex="0" role="button" aria-label="Browse for DXF files">
+                        <label for="file-input" class="btn btn-primary btn-lg" id="btn-browse" tabindex="0" role="button" aria-label="Browse for CAD files">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-                            <span>Select DXF Files</span>
+                            <span>Select DXF / DWG Files</span>
                         </label>
-                        <input type="file" id="file-input" accept=".dxf" multiple style="display: none;" aria-label="Upload DXF files">
+                        <input type="file" id="file-input" accept=".dxf,.dwg" multiple style="display: none;" aria-label="Upload CAD files">
 
                         <button type="button" class="btn btn-glass btn-lg" id="btn-load-sample" aria-label="Load a sample architectural floorplan CAD drawing">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -131,11 +191,11 @@
                             <span class="queue-size" id="queue-total-size">0 KB</span>
                         </div>
                         <div class="queue-header-actions">
-                            <label for="add-more-input" class="btn btn-ghost btn-sm" tabindex="0" role="button" aria-label="Add more DXF files to queue">
+                            <label for="add-more-input" class="btn btn-ghost btn-sm" tabindex="0" role="button" aria-label="Add more CAD files to queue">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                                 <span>Add More</span>
                             </label>
-                            <input type="file" id="add-more-input" accept=".dxf" multiple style="display: none;" aria-label="Add more files">
+                            <input type="file" id="add-more-input" accept=".dxf,.dwg" multiple style="display: none;" aria-label="Add more files">
 
                             <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-clear-queue" aria-label="Clear all files from queue">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -172,6 +232,113 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- All Tools Section -->
+        <section class="section" id="all-tools-section">
+            <div class="section-header">
+                <span class="section-tag">MULTI-TOOL UTILITY SUITE</span>
+                <h2 class="section-title">Explore All CAD &amp; PDF Tools</h2>
+                <p class="section-subtitle">Dedicated specialized utilities for engineering drawings and document workflows.</p>
+            </div>
+
+            <div class="tools-grid">
+                <!-- Tool 1: DXF to PDF -->
+                <a href="/dxf-to-pdf" class="tool-hub-card">
+                    <div>
+                        <div class="tool-card-header">
+                            <div class="tool-card-icon">DXF</div>
+                            <span class="tag tag-cyan">Vector CAD</span>
+                        </div>
+                        <h3 class="tool-card-title">DXF to Vector PDF</h3>
+                        <p class="tool-card-desc">
+                            Compile ASCII and binary AutoCAD DXF drawings into scalable, native vector PDF documents. Preserves lineweights, layers, and civil inspection hatches.
+                        </p>
+                        <div class="tool-card-tags">
+                            <span class="tag">.dxf</span>
+                            <span class="tag">Infinite Zoom</span>
+                            <span class="tag">Batch ZIP</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <span class="text-muted" style="font-size: 0.75rem;">In-Memory Engine</span>
+                        <span class="tool-card-cta">Launch Tool &rarr;</span>
+                    </div>
+                </a>
+
+                <!-- Tool 2: DWG to PDF -->
+                <a href="/dwg-to-pdf" class="tool-hub-card">
+                    <div>
+                        <div class="tool-card-header">
+                            <div class="tool-card-icon blue-variant">DWG</div>
+                            <span class="tag tag-blue">Binary CAD</span>
+                        </div>
+                        <h3 class="tool-card-title">DWG to Vector PDF</h3>
+                        <p class="tool-card-desc">
+                            Convert native Autodesk DWG binary blueprints directly in your browser. Powered by our LibreDWG bridge into clean-room vector output.
+                        </p>
+                        <div class="tool-card-tags">
+                            <span class="tag">.dwg</span>
+                            <span class="tag">AutoCAD R14–2026</span>
+                            <span class="tag">Zero Disk Retention</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <span class="text-muted" style="font-size: 0.75rem;">Headless CAD Bridge</span>
+                        <span class="tool-card-cta">Launch Tool &rarr;</span>
+                    </div>
+                </a>
+
+                <!-- Tool 3: Merge PDF -->
+                <a href="/merge-pdf" class="tool-hub-card">
+                    <div>
+                        <div class="tool-card-header">
+                            <div class="tool-card-icon emerald-variant">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+                            </div>
+                            <span class="tag" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.3);">Lossless</span>
+                        </div>
+                        <h3 class="tool-card-title">Merge PDF Documents</h3>
+                        <p class="tool-card-desc">
+                            Combine two or more PDF blueprints and documents into a unified master PDF. Lossless vector concatenation preserving fonts and rotations.
+                        </p>
+                        <div class="tool-card-tags">
+                            <span class="tag">.pdf</span>
+                            <span class="tag">Drag Reordering</span>
+                            <span class="tag">Multi-File</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <span class="text-muted" style="font-size: 0.75rem;">Stream Merging</span>
+                        <span class="tool-card-cta">Launch Tool &rarr;</span>
+                    </div>
+                </a>
+
+                <!-- Tool 4: Compress PDF -->
+                <a href="/compress-pdf" class="tool-hub-card">
+                    <div>
+                        <div class="tool-card-header">
+                            <div class="tool-card-icon purple-variant">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <span class="tag" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">Optimization</span>
+                        </div>
+                        <h3 class="tool-card-title">Compress PDF</h3>
+                        <p class="tool-card-desc">
+                            Reduce PDF file size up to 80% while safeguarding vector linework. 3 selective compression tiers for email, archiving, and municipal portals.
+                        </p>
+                        <div class="tool-card-tags">
+                            <span class="tag">.pdf</span>
+                            <span class="tag">3-Tier DPI</span>
+                            <span class="tag">Live Metrics</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <span class="text-muted" style="font-size: 0.75rem;">Smart Downsampling</span>
+                        <span class="tool-card-cta">Launch Tool &rarr;</span>
+                    </div>
+                </a>
             </div>
         </section>
 

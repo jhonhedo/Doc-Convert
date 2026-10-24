@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compress PDF Online - Reduce PDF Size Without Quality Loss | CADConvert</title>
+    <meta name="description" content="Compress and downsample PDF files online. Choose between Extreme, Recommended, and Low compression tiers. Preserves vector drawings with zero disk retention.">
+    <link rel="canonical" href="https://docconvert.net/compress-pdf">
+    
+    <!-- OpenGraph & Twitter -->
+    <meta property="og:title" content="Compress PDF Online - Reduce PDF Size Without Quality Loss | CADConvert">
+    <meta property="og:description" content="Reduce PDF file size in volatile memory. 3 compression tiers downsample embedded images while preserving pure vector geometry.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://docconvert.net/compress-pdf">
+    <!-- Favicon & App Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+
+    <!-- Fonts & Styles -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- JSON-LD FAQPage Schema Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How does CADConvert compress PDF files without losing vector sharpness?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Our engine selectively targets high-resolution embedded raster photographs and underlays for downsampling and JPEG recompression, while leaving all mathematical vector line work, curves, and text completely lossless."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are the three compression levels?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Mild (Low) retains maximum raster resolution for high-end plotting; Recommended (Medium) downsamples images to 150 DPI for general emailing and web display (~50% size savings); Extreme (High) aggressively compresses to 96 DPI for minimum file size (~75% savings)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is my PDF uploaded to permanent storage?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The optimization is executed 100% in volatile server memory (RAM) and immediately streamed back. No files or document metadata are saved to disk."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I compress architectural blueprints or CAD-generated PDFs?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! The engine was specifically designed for architectural drawings and engineering documents, ensuring title blocks, thin lineweights, and text remain sharp."
+          }
+        }
+      ]
+    }
+    </script>
+</head>
+<body class="blueprint-theme">
+    <div class="cad-bg-grid" aria-hidden="true"></div>
+    <div class="cad-radial-glow top-left" aria-hidden="true"></div>
+    <div class="cad-radial-glow bottom-right" aria-hidden="true"></div>
+
+    <!-- Navigation Header -->
+    <header class="navbar" role="banner">
+        <div class="nav-container">
+            <a href="/" class="brand-logo" aria-label="CADConvert Homepage">
+                <div class="logo-icon" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="26" height="26" rx="6" stroke="#00F0FF" stroke-width="2" stroke-dasharray="4 2"/>
+                        <path d="M8 24L16 8L24 24" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="16" cy="8" r="2.5" fill="#00F0FF"/>
+                        <circle cx="8" cy="24" r="2.5" fill="#38BDF8"/>
+                        <circle cx="24" cy="24" r="2.5" fill="#38BDF8"/>
+                        <path d="M11 19H21" stroke="#00F0FF" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">CAD<span class="highlight">Convert</span></span>
+                    <span class="brand-subtitle">CAD &amp; PDF VECTOR SUITE</span>
+                </div>
+            </a>
+
+            <nav class="nav-links" aria-label="Main Navigation">
+                <div class="nav-dropdown">
+                    <button class="nav-dropdown-toggle active" aria-expanded="false">
+                        <span>Tools</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="nav-dropdown-menu">
+                        <div class="dropdown-group-title">CAD Converters</div>
+                        <a href="/dxf-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DXF</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DXF to PDF</span>
+                                <span class="dropdown-item-desc">Vector CAD drawing conversion</span>
+                            </div>
+                        </a>
+                        <a href="/dwg-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DWG</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DWG to PDF</span>
+                                <span class="dropdown-item-desc">Native AutoCAD binary support</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-group-title">PDF Optimization</div>
+                        <a href="/merge-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Merge PDF</span>
+                                <span class="dropdown-item-desc">Combine multi-sheet sets</span>
+                            </div>
+                        </a>
+                        <a href="/compress-pdf" class="dropdown-item active">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Compress PDF</span>
+                                <span class="dropdown-item-desc">Downsample without vector loss</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/tools" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">All Tools Directory</span>
+                                <span class="dropdown-item-desc">Browse full utility suite</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="/tools" class="nav-link">Hub</a>
+                <a href="#how-it-works" class="nav-link">How It Works</a>
+                <a href="#specs-section" class="nav-link">Specs</a>
+                <a href="#faq-section" class="nav-link">FAQ</a>
+            </nav>
+
+            <div class="nav-actions">
+                <div class="server-status-pill" id="server-status-badge">
+                    <span class="status-dot pulsing" aria-hidden="true"></span>
+                    <span class="status-label" id="status-text">Online</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-open-api">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+                    <span>REST API</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-badge">
+                <span class="badge-icon">🗜️</span>
+                <span>IN-MEMORY STREAM OPTIMIZATION</span>
+            </div>
+            <h1 class="hero-title">Compress PDF Online</h1>
+            <p class="hero-subtitle">
+                Reduce PDF file size without sacrificing crisp vector drawings. 
+                Downsamples heavy embedded images, cleans metadata, and re-compresses streams with <strong class="text-cyan">zero disk retention</strong>.
+            </p>
+        </section>
+
+        <!-- PDF Compression Interface -->
+        <section class="converter-wrapper" id="compress-section" aria-label="PDF Compression Utility">
+            <div class="converter-card" id="compress-dropzone">
+                <div class="dropzone-content" id="compress-empty-view">
+                    <div class="cad-crosshair-icon" aria-hidden="true">
+                        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="18" y="14" width="28" height="36" rx="4" stroke="#00F0FF" stroke-width="2"/>
+                            <path d="M10 32H20M54 32H44" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+                            <polyline points="16 28 20 32 16 36" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+                            <polyline points="48 28 44 32 48 36" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+
+                    <h2 class="drop-title">Select PDF Document to Compress</h2>
+                    <p class="drop-desc">Upload large architectural drawings, scanned sets, or multi-page documents</p>
+
+                    <div class="drop-buttons">
+                        <label for="compress-input" class="btn btn-primary btn-lg" tabindex="0" role="button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                            <span>Select PDF File</span>
+                        </label>
+                        <input type="file" id="compress-input" accept=".pdf" style="display: none;">
+                    </div>
+
+                    <div class="drop-limits">
+                        <span>Max file size: 25 MB</span>
+                        <span class="dot-separator">•</span>
+                        <span>Vector Geometry Preserved</span>
+                        <span class="dot-separator">•</span>
+                        <span>In-Memory RAM Execution</span>
+                    </div>
+                </div>
+
+                <!-- Active Compress File & Tier Selector -->
+                <div class="compress-options-container" id="compress-active-container" style="display: none;">
+                    <div class="queue-header">
+                        <div class="queue-header-title">
+                            <h3 id="compress-file-display">document.pdf</h3>
+                            <span class="queue-size" id="compress-file-orig-size">0 KB</span>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-compress-remove">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                            <span>Change File</span>
+                        </button>
+                    </div>
+
+                    <!-- 3-Tier Selector -->
+                    <div>
+                        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary);">Select Compression Level</h4>
+                        <div class="compress-tiers-grid">
+                            <div class="compress-tier-card" data-tier="low">
+                                <div class="compress-tier-title">Low (Mild)</div>
+                                <div class="compress-tier-saving">~25%</div>
+                                <div class="compress-tier-desc">Crisp photo fidelity (1600 DPI max, 85% quality). Best for blueprints with high-res underlays.</div>
+                            </div>
+                            <div class="compress-tier-card selected" data-tier="medium">
+                                <span class="compress-tier-badge">Recommended</span>
+                                <div class="compress-tier-title">Medium</div>
+                                <div class="compress-tier-saving">~50%</div>
+                                <div class="compress-tier-desc">Balanced DPI (1200px max, 70% quality). Ideal for email, client review, and web viewing.</div>
+                            </div>
+                            <div class="compress-tier-card" data-tier="high">
+                                <div class="compress-tier-title">High (Extreme)</div>
+                                <div class="compress-tier-saving">~75%</div>
+                                <div class="compress-tier-desc">Maximum reduction (800px max, 50% quality). Aggressive size reduction for strict portals.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 0.5rem;">
+                        <button type="button" class="btn btn-primary btn-lg glow" id="btn-execute-compress">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            <span>Compress PDF Now</span>
+                        </button>
+                    </div>
+
+                    <!-- Result Metrics Card (Shown after compression completes) -->
+                    <div class="compression-result-card" id="compress-result-box" style="display: none;">
+                        <h4 style="color: var(--cyan-primary); margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Compression Completed Successfully!</h4>
+                        <div class="result-metrics-grid">
+                            <div class="result-metric">
+                                <div class="result-metric-label">Original Size</div>
+                                <div class="result-metric-val" id="res-orig-size">0 KB</div>
+                            </div>
+                            <div class="result-metric">
+                                <div class="result-metric-label">Compressed Size</div>
+                                <div class="result-metric-val" id="res-new-size">0 KB</div>
+                            </div>
+                            <div class="result-metric">
+                                <div class="result-metric-label">Space Saved</div>
+                                <div class="result-metric-val savings" id="res-savings">0%</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <button type="button" class="btn btn-success btn-lg" id="btn-download-compressed">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                <span>Download Compressed PDF</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="section" id="how-it-works">
+            <div class="section-header">
+                <span class="section-tag">OPTIMIZATION FLOW</span>
+                <h2 class="section-title">How to Compress PDF Files in 3 Steps</h2>
+                <p class="section-subtitle">Quick, private, and vector-safe compression in volatile memory.</p>
+            </div>
+
+            <div class="steps-container">
+                <div class="step-card">
+                    <div class="step-num">01</div>
+                    <h3>Upload PDF File</h3>
+                    <p>Select your PDF document. Files are buffered in encrypted volatile RAM without disk storage.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">02</div>
+                    <h3>Select Compression Tier</h3>
+                    <p>Choose between Mild, Recommended, or High based on your desired DPI and size requirements.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">03</div>
+                    <h3>Download Compact PDF</h3>
+                    <p>Receive your optimized PDF with immediate download and real-time percentage savings statistics.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technical Specifications Table -->
+        <section class="section" id="specs-section">
+            <div class="section-header">
+                <span class="section-tag">TIER SPECIFICATIONS</span>
+                <h2 class="section-title">PDF Compression Levels Comparison</h2>
+                <p class="section-subtitle">Detailed breakdown of raster downsampling and stream optimization per tier.</p>
+            </div>
+
+            <div class="specs-table-wrapper">
+                <table class="specs-table">
+                    <thead>
+                        <tr>
+                            <th>Compression Tier</th>
+                            <th>Target Resolution (DPI)</th>
+                            <th>Image Encoding</th>
+                            <th>Vector Lines &amp; Fonts</th>
+                            <th>Average Reduction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Low (Mild)</strong></td>
+                            <td>Max 1600 px (~250–300 DPI)</td>
+                            <td>High-fidelity JPEG (Q=0.85)</td>
+                            <td>100% Uncompressed Lossless</td>
+                            <td>15% – 30%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Medium (Recommended)</strong></td>
+                            <td>Max 1200 px (~150 DPI)</td>
+                            <td>Balanced JPEG (Q=0.70)</td>
+                            <td>100% Uncompressed Lossless</td>
+                            <td>40% – 65%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>High (Extreme)</strong></td>
+                            <td>Max 800 px (~96 DPI)</td>
+                            <td>Compressed JPEG (Q=0.50)</td>
+                            <td>100% Uncompressed Lossless</td>
+                            <td>65% – 85%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Structure Optimization</strong></td>
+                            <td>Stripped metadata streams &amp; unused object references across all tiers</td>
+                            <td>Flate Deflate Re-encoding</td>
+                            <td>Preserves PDF/A &amp; rotation flags</td>
+                            <td>Additional 5% overhead saved</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="section" id="faq-section">
+            <div class="section-header">
+                <span class="section-tag">QUESTIONS &amp; ANSWERS</span>
+                <h2 class="section-title">Frequently Asked Questions</h2>
+            </div>
+
+            <div class="faq-accordion">
+                <details class="faq-item" open>
+                    <summary class="faq-question">
+                        <span>How does CADConvert compress PDF files without losing vector sharpness?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p>Our engine selectively targets high-resolution embedded raster photographs and underlays for downsampling and JPEG recompression, while leaving all mathematical vector line work, curves, and text completely lossless.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span>What are the three compression levels?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p>Mild (Low) retains maximum raster resolution for high-end plotting; Recommended (Medium) downsamples images to 150 DPI for general emailing and web display (~50% size savings); Extreme (High) aggressively compresses to 96 DPI for minimum file size (~75% savings).</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span>Is my PDF uploaded to permanent storage?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p>No. The optimization is executed 100% in volatile server memory (RAM) and immediately streamed back. No files or document metadata are saved to disk.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span>Can I compress architectural blueprints or CAD-generated PDFs?</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p>Yes! The engine was specifically designed for architectural drawings and engineering documents, ensuring title blocks, thin lineweights, and text remain sharp.</p>
+                    </div>
+                </details>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col brand-col">
+                <span class="brand-title">CAD<span class="highlight">Convert</span></span>
+                <p class="footer-desc">High-precision CAD vector and PDF optimization utilities. In-memory processing with zero permanent storage.</p>
+            </div>
+            <div class="footer-col">
+                <h4>CAD Tools</h4>
+                <ul>
+                    <li><a href="/dxf-to-pdf">DXF to PDF</a></li>
+                    <li><a href="/dwg-to-pdf">DWG to PDF</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>PDF Tools</h4>
+                <ul>
+                    <li><a href="/merge-pdf">Merge PDF</a></li>
+                    <li><a href="/compress-pdf">Compress PDF</a></li>
+                    <li><a href="/tools">All Tools</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Platform</h4>
+                <ul>
+                    <li><a href="mailto:support@docconvert.net">support@docconvert.net</a></li>
+                    <li><span class="text-muted">Storage: Volatile RAM</span></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-bottom-container">
+                <span>&copy; 2026 CADConvert.net. All rights reserved.</span>
+                <span class="footer-tag">PDF &bull; Compress &bull; Lossless Vector</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

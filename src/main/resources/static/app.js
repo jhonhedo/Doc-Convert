@@ -779,6 +779,374 @@ curl http://localhost:8080/api/health`
         });
     }
 
+    // =========================================================================
+    // Multi-Tool Navigation Dropdown
+    // =========================================================================
+    const toolsDropdown = document.querySelector('.nav-dropdown');
+    const toolsDropdownBtn = document.querySelector('.nav-dropdown-toggle');
+    if (toolsDropdown && toolsDropdownBtn) {
+        toolsDropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = toolsDropdown.classList.toggle('open');
+            toolsDropdownBtn.setAttribute('aria-expanded', String(isOpen));
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!toolsDropdown.contains(e.target)) {
+                toolsDropdown.classList.remove('open');
+                toolsDropdownBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && toolsDropdown.classList.contains('open')) {
+                toolsDropdown.classList.remove('open');
+                toolsDropdownBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
+    // =========================================================================
+    // PDF Merge Utility Logic
+    // =========================================================================
+    const mergeDropzone = document.getElementById('merge-dropzone');
+    const mergeInput = document.getElementById('merge-input');
+    const mergeAddMore = document.getElementById('merge-add-more');
+    const mergeEmptyView = document.getElementById('merge-empty-view');
+    const mergeQueueContainer = document.getElementById('merge-queue-container');
+    const mergeFilesList = document.getElementById('merge-files-list');
+    const mergeCount = document.getElementById('merge-count');
+    const mergeTotalSize = document.getElementById('merge-total-size');
+    const btnMergeClear = document.getElementById('btn-merge-clear');
+    const btnExecuteMerge = document.getElementById('btn-execute-merge');
+
+    let mergeQueue = [];
+
+    function updateMergeUI() {
+        if (!mergeQueueContainer || !mergeEmptyView) return;
+
+        if (mergeQueue.length === 0) {
+            mergeEmptyView.style.display = 'block';
+            mergeQueueContainer.style.display = 'none';
+            return;
+        }
+
+        mergeEmptyView.style.display = 'none';
+        mergeQueueContainer.style.display = 'block';
+
+        if (mergeCount) mergeCount.textContent = mergeQueue.length;
+        const totalBytes = mergeQueue.reduce((acc, item) => acc + item.file.size, 0);
+        if (mergeTotalSize) mergeTotalSize.textContent = formatBytes(totalBytes);
+
+        if (mergeFilesList) {
+            mergeFilesList.innerHTML = '';
+            mergeQueue.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'merge-file-row';
+                row.innerHTML = `
+                    <div class="merge-file-left">
+                        <span class="merge-index-badge">${index + 1}</span>
+                        <div>
+                            <div class="merge-file-name" title="${escapeHtml(item.file.name)}">${escapeHtml(item.file.name)}</div>
+                            <span class="merge-file-size">${formatBytes(item.file.size)}</span>
+                        </div>
+                    </div>
+                    <div class="merge-file-actions">
+                        <button type="button" class="btn-icon btn-move-up" data-idx="${index}" title="Move Up" ${index === 0 ? 'disabled' : ''}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <button type="button" class="btn-icon btn-move-down" data-idx="${index}" title="Move Down" ${index === mergeQueue.length - 1 ? 'disabled' : ''}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <button type="button" class="btn-icon danger btn-remove-merge" data-idx="${index}" title="Remove">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                        </button>
+                    </div>
+                `;
+                mergeFilesList.appendChild(row);
+            });
+
+            // Bind reorder actions
+            mergeFilesList.querySelectorAll('.btn-move-up').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.getAttribute('data-idx'));
+                    if (idx > 0) {
+                        const temp = mergeQueue[idx];
+                        mergeQueue[idx] = mergeQueue[idx - 1];
+                        mergeQueue[idx - 1] = temp;
+                        updateMergeUI();
+                    }
+                });
+            });
+
+            mergeFilesList.querySelectorAll('.btn-move-down').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.getAttribute('data-idx'));
+                    if (idx < mergeQueue.length - 1) {
+                        const temp = mergeQueue[idx];
+                        mergeQueue[idx] = mergeQueue[idx + 1];
+                        mergeQueue[idx + 1] = temp;
+                        updateMergeUI();
+                    }
+                });
+            });
+
+            mergeFilesList.querySelectorAll('.btn-remove-merge').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.getAttribute('data-idx'));
+                    mergeQueue.splice(idx, 1);
+                    updateMergeUI();
+                });
+            });
+        }
+    }
+
+    function addFilesToMerge(files) {
+        for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            if (f.name.toLowerCase().endsWith('.pdf')) {
+                mergeQueue.push({ id: Math.random().toString(36).substring(2, 9), file: f });
+            }
+        }
+        updateMergeUI();
+    }
+
+    if (mergeInput) {
+        mergeInput.addEventListener('change', (e) => {
+            if (e.target.files) addFilesToMerge(e.target.files);
+            mergeInput.value = '';
+        });
+    }
+
+    if (mergeAddMore) {
+        mergeAddMore.addEventListener('change', (e) => {
+            if (e.target.files) addFilesToMerge(e.target.files);
+            mergeAddMore.value = '';
+        });
+    }
+
+    if (btnMergeClear) {
+        btnMergeClear.addEventListener('click', () => {
+            mergeQueue = [];
+            updateMergeUI();
+        });
+    }
+
+    if (mergeDropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            mergeDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                mergeDropzone.classList.add('drag-active');
+            });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            mergeDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                mergeDropzone.classList.remove('drag-active');
+            });
+        });
+        mergeDropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer && e.dataTransfer.files) {
+                addFilesToMerge(e.dataTransfer.files);
+            }
+        });
+    }
+
+    if (btnExecuteMerge) {
+        btnExecuteMerge.addEventListener('click', async () => {
+            if (mergeQueue.length < 2) {
+                alert('Please select at least 2 PDF documents to merge.');
+                return;
+            }
+
+            btnExecuteMerge.disabled = true;
+            const origHtml = btnExecuteMerge.innerHTML;
+            btnExecuteMerge.innerHTML = `<span class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span> Merging...`;
+
+            try {
+                const formData = new FormData();
+                mergeQueue.forEach((item) => {
+                    formData.append('file', item.file, item.file.name);
+                });
+
+                const res = await fetch('/api/pdf/merge', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const errJson = await res.json().catch(() => ({}));
+                    throw new Error(errJson.error || 'Failed to merge documents.');
+                }
+
+                const blob = await res.blob();
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = 'merged_documents.pdf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btnExecuteMerge.disabled = false;
+                btnExecuteMerge.innerHTML = origHtml;
+            }
+        });
+    }
+
+    // =========================================================================
+    // PDF Compress Utility Logic
+    // =========================================================================
+    const compressDropzone = document.getElementById('compress-dropzone');
+    const compressInput = document.getElementById('compress-input');
+    const compressEmptyView = document.getElementById('compress-empty-view');
+    const compressActiveContainer = document.getElementById('compress-active-container');
+    const compressFileDisplay = document.getElementById('compress-file-display');
+    const compressFileOrigSize = document.getElementById('compress-file-orig-size');
+    const btnCompressRemove = document.getElementById('btn-compress-remove');
+    const btnExecuteCompress = document.getElementById('btn-execute-compress');
+    const compressResultBox = document.getElementById('compress-result-box');
+    const resOrigSize = document.getElementById('res-orig-size');
+    const resNewSize = document.getElementById('res-new-size');
+    const resSavings = document.getElementById('res-savings');
+    const btnDownloadCompressed = document.getElementById('btn-download-compressed');
+
+    let currentCompressFile = null;
+    let selectedCompressTier = 'medium';
+    let lastCompressedBlob = null;
+    let lastCompressedName = 'compressed.pdf';
+
+    function setCompressFile(file) {
+        if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+            alert('Please select a valid PDF file.');
+            return;
+        }
+        currentCompressFile = file;
+        if (compressEmptyView) compressEmptyView.style.display = 'none';
+        if (compressActiveContainer) compressActiveContainer.style.display = 'block';
+        if (compressFileDisplay) compressFileDisplay.textContent = file.name;
+        if (compressFileOrigSize) compressFileOrigSize.textContent = formatBytes(file.size);
+        if (compressResultBox) compressResultBox.style.display = 'none';
+    }
+
+    if (compressInput) {
+        compressInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                setCompressFile(e.target.files[0]);
+            }
+            compressInput.value = '';
+        });
+    }
+
+    if (btnCompressRemove) {
+        btnCompressRemove.addEventListener('click', () => {
+            currentCompressFile = null;
+            if (compressEmptyView) compressEmptyView.style.display = 'block';
+            if (compressActiveContainer) compressActiveContainer.style.display = 'none';
+            if (compressResultBox) compressResultBox.style.display = 'none';
+        });
+    }
+
+    if (compressDropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            compressDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                compressDropzone.classList.add('drag-active');
+            });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            compressDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                compressDropzone.classList.remove('drag-active');
+            });
+        });
+        compressDropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                setCompressFile(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    document.querySelectorAll('.compress-tier-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.compress-tier-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedCompressTier = card.getAttribute('data-tier') || 'medium';
+        });
+    });
+
+    if (btnExecuteCompress) {
+        btnExecuteCompress.addEventListener('click', async () => {
+            if (!currentCompressFile) return;
+
+            btnExecuteCompress.disabled = true;
+            const origHtml = btnExecuteCompress.innerHTML;
+            btnExecuteCompress.innerHTML = `<span class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span> Compressing...`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', currentCompressFile, currentCompressFile.name);
+                formData.append('level', selectedCompressTier);
+
+                const res = await fetch(`/api/pdf/compress?level=${selectedCompressTier}`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || 'PDF compression failed.');
+                }
+
+                const data = await res.json();
+                lastCompressedName = data.filename || 'compressed.pdf';
+
+                // Decode base64 to Blob
+                const byteCharacters = atob(data.pdfBase64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                lastCompressedBlob = new Blob([byteArray], { type: 'application/pdf' });
+
+                if (resOrigSize) resOrigSize.textContent = formatBytes(data.originalSize);
+                if (resNewSize) resNewSize.textContent = formatBytes(data.compressedSize);
+                if (resSavings) resSavings.textContent = `${data.savingsPercentage.toFixed(1)}%`;
+                if (compressResultBox) compressResultBox.style.display = 'block';
+
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btnExecuteCompress.disabled = false;
+                btnExecuteCompress.innerHTML = origHtml;
+            }
+        });
+    }
+
+    if (btnDownloadCompressed) {
+        btnDownloadCompressed.addEventListener('click', () => {
+            if (!lastCompressedBlob) return;
+            const downloadUrl = URL.createObjectURL(lastCompressedBlob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = lastCompressedName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        });
+    }
+
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/&/g, '&amp;')
@@ -788,3 +1156,4 @@ curl http://localhost:8080/api/health`
                   .replace(/'/g, '&#039;');
     }
 });
+
