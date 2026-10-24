@@ -83,6 +83,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (optTargetLayers) optTargetLayers.value = state.settings.targetLayers;
     if (optDpi) optDpi.value = String(state.settings.dpi);
 
+    // Tools Navigation Dropdown
+    const toolsDropdown = document.querySelector('.nav-dropdown');
+    const toolsDropdownBtn = document.getElementById('tools-dropdown-btn');
+    if (toolsDropdown && toolsDropdownBtn) {
+        toolsDropdownBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = toolsDropdown.classList.toggle('is-open');
+            toolsDropdownBtn.setAttribute('aria-expanded', String(isOpen));
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!toolsDropdown.contains(e.target)) {
+                toolsDropdown.classList.remove('is-open');
+                toolsDropdownBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
     // =========================================================================
     // 1. Server Health Check & Heartbeat
     // =========================================================================

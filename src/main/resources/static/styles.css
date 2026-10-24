@@ -172,7 +172,7 @@ body {
 .nav-links {
     display: flex;
     align-items: center;
-    gap: 1.75rem;
+    gap: 1.5rem;
 }
 
 .nav-link {
@@ -185,6 +185,153 @@ body {
 
 .nav-link:hover, .nav-link.active {
     color: var(--cyan-primary);
+}
+
+/* Navigation Dropdown */
+.nav-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.nav-dropdown-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.85rem;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-dropdown-toggle:hover,
+.nav-dropdown-toggle.active,
+.nav-dropdown:hover .nav-dropdown-toggle,
+.nav-dropdown.is-open .nav-dropdown-toggle {
+    background: rgba(0, 240, 255, 0.14);
+    border-color: var(--cyan-primary);
+    color: var(--cyan-primary);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+.nav-dropdown-toggle svg {
+    transition: transform 0.25s ease;
+}
+
+.nav-dropdown:hover .nav-dropdown-toggle svg,
+.nav-dropdown.is-open .nav-dropdown-toggle svg {
+    transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    width: 310px;
+    background: rgba(10, 16, 32, 0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(0, 240, 255, 0.12);
+    padding: 0.65rem;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-8px);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+}
+
+/* Hover bridge to keep dropdown open during mouse travel */
+.nav-dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 0;
+    right: 0;
+    height: 12px;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown.is-open .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.dropdown-group-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cyan-primary);
+    padding: 0.4rem 0.65rem 0.25rem;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: rgba(56, 189, 248, 0.12);
+    margin: 0.4rem 0;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.18s ease;
+}
+
+.dropdown-item:hover, .dropdown-item.active {
+    background: rgba(0, 240, 255, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+.dropdown-item-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    color: var(--cyan-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+}
+
+.dropdown-item-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.dropdown-item-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #F8FAFC;
+    line-height: 1.25;
+}
+
+.dropdown-item-desc {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
 }
 
 .nav-actions {
@@ -379,24 +526,29 @@ body {
 }
 
 .converter-card {
-    background: var(--bg-card);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
+    background: linear-gradient(180deg, rgba(14, 23, 44, 0.9) 0%, rgba(8, 14, 28, 0.98) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 2px dashed rgba(56, 189, 248, 0.32);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-md), 0 0 40px rgba(0, 240, 255, 0.05);
+    box-shadow: 0 16px 45px rgba(0, 0, 0, 0.6), 0 0 35px rgba(0, 240, 255, 0.08);
     overflow: hidden;
     position: relative;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.converter-card.drag-over {
+.converter-card:hover,
+.converter-card.drag-over,
+.converter-card.drag-active {
     border-color: var(--cyan-primary);
-    box-shadow: 0 0 35px rgba(0, 240, 255, 0.25);
+    border-style: solid;
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.75), 0 0 45px rgba(0, 240, 255, 0.25);
+    transform: translateY(-2px);
 }
 
 /* Dropzone Content */
 .dropzone-content {
-    padding: 4.5rem 2rem;
+    padding: 4rem 2rem;
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -405,33 +557,38 @@ body {
 }
 
 .cad-crosshair-icon {
-    width: 72px;
-    height: 72px;
+    width: 76px;
+    height: 76px;
     margin-bottom: 1.5rem;
     color: var(--cyan-primary);
-    transition: transform 0.3s ease;
+    filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.4));
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .converter-card:hover .cad-crosshair-icon {
-    transform: scale(1.08) rotate(4deg);
+    transform: scale(1.1) rotate(6deg);
 }
 
 .drop-title {
-    font-size: 1.6rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.6rem;
+    color: #FFFFFF;
+    letter-spacing: -0.02em;
 }
 
 .drop-desc {
     color: var(--text-secondary);
-    font-size: 0.95rem;
+    font-size: 1rem;
     margin-bottom: 2rem;
+    max-width: 580px;
+    line-height: 1.5;
 }
 
 .drop-buttons {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.25rem;
     margin-bottom: 2rem;
     flex-wrap: wrap;
     justify-content: center;
@@ -1935,5 +2092,205 @@ body {
 
     .result-metrics-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   Tools Hub Grid & Cards (Modern CAD Blueprint Suite)
+   ========================================================================== */
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.tool-hub-card {
+    background: linear-gradient(180deg, rgba(16, 26, 48, 0.85) 0%, rgba(10, 16, 32, 0.95) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: var(--radius-xl);
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.tool-hub-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan-primary), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tool-hub-card:hover {
+    border-color: rgba(0, 240, 255, 0.45);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 240, 255, 0.15);
+}
+
+.tool-hub-card:hover::before {
+    opacity: 1;
+}
+
+.tool-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+.tool-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.18) 0%, rgba(37, 99, 235, 0.18) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    color: var(--cyan-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.15);
+}
+
+.tool-card-icon.blue-variant {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.25) 0%, rgba(29, 78, 216, 0.15) 100%);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #60A5FA;
+    box-shadow: 0 0 16px rgba(37, 99, 235, 0.2);
+}
+
+.tool-card-icon.emerald-variant {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #34D399;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
+}
+
+.tool-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.01em;
+}
+
+.tool-card-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 1.25rem;
+}
+
+.tool-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+}
+
+.tool-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tool-card-cta {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--cyan-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.tool-hub-card:hover .tool-card-cta {
+    transform: translateX(4px);
+    color: var(--cyan-hover);
+}
+
+/* ==========================================================================
+   Landing Steps Grid (How it works 3-step workflow)
+   ========================================================================== */
+.landing-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.landing-step-card {
+    background: linear-gradient(180deg, rgba(16, 26, 48, 0.75) 0%, rgba(10, 16, 30, 0.9) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.landing-step-card:hover {
+    border-color: rgba(0, 240, 255, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.1);
+}
+
+.step-num {
+    font-family: var(--font-mono);
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: rgba(0, 240, 255, 0.25);
+    line-height: 1;
+    margin-bottom: 1rem;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.landing-step-card:hover .step-num {
+    color: var(--cyan-primary);
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+}
+
+.landing-step-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.6rem;
+}
+
+.landing-step-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+@media (max-width: 860px) {
+    .landing-steps-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nav-links {
+        gap: 0.85rem;
+    }
+
+    .nav-link {
+        font-size: 0.82rem;
     }
 }
