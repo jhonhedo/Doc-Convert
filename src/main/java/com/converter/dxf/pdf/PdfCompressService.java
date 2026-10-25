@@ -1,36 +1,51 @@
 package com.converter.dxf.pdf;
 
+import org.apache.pdfbox.cos.COSArray;
+import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSObject;
+import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
-import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
-import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 
 /**
  * In-memory PDF compression and optimization service.
- * Downsamples embedded raster images, removes redundant metadata streams,
- * and reapplies Flate stream compression while preserving all vector geometry.
+ * Performs in-place raster image downsampling and JPEG re-encoding,
+ * compresses uncompressed vector content streams, removes redundant metadata,
+ * and eliminates orphan XObjects with zero disk retention.
  */
 public class PdfCompressService {
 
     public enum CompressionLevel {
-        LOW(1600, 0.85f, "Mild compression (max image fidelity)"),
-        MEDIUM(1200, 0.70f, "Recommended (balanced DPI & size reduction)"),
-        HIGH(800, 0.50f, "Extreme compression (maximum byte savings)");
+        LOW(1400, 0.70f, "Mild compression (max image fidelity)"),
+        MEDIUM(900, 0.50f, "Recommended (balanced DPI & size reduction)"),
+        HIGH(600, 0.30f, "Extreme compression (maximum byte savings)");
 
         private final int maxDimension;
         private final float jpegQuality;
@@ -77,7 +92,7 @@ public class PdfCompressService {
             this.compressedSize = compressedSize;
             this.totalPages = totalPages;
             this.optimizedImagesCount = optimizedImagesCount;
-            if (originalSize > 0) {
+            if (originalSize > 0 && compressedSize < originalSize) {
                 double diff = (double) (originalSize - compressedSize);
                 this.savingsPercentage = Math.max(0.0, Math.min(99.9, (diff / originalSize) * 100.0));
             } else {
@@ -133,10 +148,14 @@ public class PdfCompressService {
             // 1. Strip unneeded metadata streams (reduces overhead while preserving page rendering)
             if (document.getDocumentCatalog() != null) {
                 document.getDocumentCatalog().setMetadata(null);
+                document.getDocumentCatalog().getCOSObject().removeItem(COSName.PIECE_INFO);
             }
 
-            // 2. Iterate pages and optimize raster image XObjects
-            Set<COSName> processedObjects = new HashSet<>();
+            // 2. Compress uncompressed page content streams
+            compressPageContents(document);
+
+            // 3. Iterate pages and optimize raster image XObjects in-place
+            Set<COSBase> processedObjects = new HashSet<>();
             for (PDPage page : document.getPages()) {
                 PDResources resources = page.getResources();
                 if (resources != null) {
@@ -144,14 +163,13 @@ public class PdfCompressService {
                 }
             }
 
-            // 3. Save to output stream using standard Flate stream compression
+            // 4. Save to output stream
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             document.save(out);
             byte[] compressedBytes = out.toByteArray();
 
-            // Guard: If compressed is somehow larger than original (e.g. already compressed high-efficiency PDF),
-            // and no image optimization was applied, return original or the smaller one
-            if (compressedBytes.length > originalSize && optimizedImages == 0) {
+            // Guard: If compressed is larger than or equal to original, return original bytes with 0% savings
+            if (compressedBytes.length >= originalSize) {
                 return new CompressResult(originalPdfBytes, originalSize, originalSize, pageCount, 0);
             }
 
@@ -159,49 +177,200 @@ public class PdfCompressService {
         }
     }
 
-    private static int optimizeResources(PDDocument document, PDResources resources, CompressionLevel level, Set<COSName> visited) {
-        int count = 0;
-        for (COSName name : resources.getXObjectNames()) {
-            if (visited.contains(name)) continue;
-            visited.add(name);
+    private static void compressPageContents(PDDocument document) {
+        for (PDPage page : document.getPages()) {
+            page.getCOSObject().removeItem(COSName.PIECE_INFO);
 
-            try {
-                PDXObject xobject = resources.getXObject(name);
-                if (xobject instanceof PDImageXObject) {
-                    PDImageXObject img = (PDImageXObject) xobject;
-                    int origWidth = img.getWidth();
-                    int origHeight = img.getHeight();
-
-                    // Only downsample if image dimension exceeds threshold or quality compression can reduce size
-                    if (origWidth > level.getMaxDimension() || origHeight > level.getMaxDimension() || level == CompressionLevel.HIGH) {
-                        BufferedImage rawImage = img.getImage();
-                        if (rawImage != null) {
-                            BufferedImage rescaled = rescaleImage(rawImage, level.getMaxDimension());
-                            PDImageXObject optimizedXObject;
-
-                            // Compress with JPEG if RGB, or Lossless if transparency/palette
-                            if (hasAlpha(rescaled)) {
-                                optimizedXObject = LosslessFactory.createFromImage(document, rescaled);
-                            } else {
-                                optimizedXObject = JPEGFactory.createFromImage(document, rescaled, level.getJpegQuality());
-                            }
-
-                            resources.put(name, optimizedXObject);
-                            count++;
-                        }
+            COSBase contents = page.getCOSObject().getDictionaryObject(COSName.CONTENTS);
+            if (contents instanceof COSStream) {
+                compressStreamIfUncompressed((COSStream) contents);
+            } else if (contents instanceof COSArray) {
+                for (COSBase item : (COSArray) contents) {
+                    if (item instanceof COSObject) {
+                        item = ((COSObject) item).getObject();
                     }
-                } else if (xobject instanceof PDFormXObject) {
-                    PDFormXObject form = (PDFormXObject) xobject;
-                    PDResources childResources = form.getResources();
-                    if (childResources != null) {
-                        count += optimizeResources(document, childResources, level, visited);
+                    if (item instanceof COSStream) {
+                        compressStreamIfUncompressed((COSStream) item);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void compressStreamIfUncompressed(COSStream stream) {
+        if (stream == null) return;
+        COSBase filter = stream.getItem(COSName.FILTER);
+        if (filter == null) {
+            try {
+                byte[] rawBytes;
+                try (InputStream is = stream.createRawInputStream();
+                     ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    byte[] buf = new byte[4096];
+                    int r;
+                    while ((r = is.read(buf)) != -1) baos.write(buf, 0, r);
+                    rawBytes = baos.toByteArray();
+                }
+
+                if (rawBytes.length > 64) {
+                    ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+                    try (DeflaterOutputStream deflater = new DeflaterOutputStream(compressed, new Deflater(Deflater.BEST_COMPRESSION))) {
+                        deflater.write(rawBytes);
+                    }
+                    byte[] deflatedBytes = compressed.toByteArray();
+                    if (deflatedBytes.length < rawBytes.length) {
+                        stream.setItem(COSName.FILTER, COSName.FLATE_DECODE);
+                        try (OutputStream os = stream.createRawOutputStream()) {
+                            os.write(deflatedBytes);
+                        }
                     }
                 }
             } catch (Exception ignored) {
-                // Ignore single image optimization error to guarantee document integrity
+            }
+        }
+    }
+
+    private static int optimizeResources(PDDocument document, PDResources resources, CompressionLevel level, Set<COSBase> visited) {
+        if (resources == null) return 0;
+        int count = 0;
+        for (COSName name : resources.getXObjectNames()) {
+            try {
+                PDXObject xobject = resources.getXObject(name);
+                if (xobject == null) continue;
+                COSStream cosStream = xobject.getCOSObject();
+                if (cosStream == null || visited.contains(cosStream)) continue;
+                visited.add(cosStream);
+
+                if (xobject instanceof PDImageXObject) {
+                    if (optimizeImageStream((PDImageXObject) xobject, level)) {
+                        count++;
+                    }
+                } else if (xobject instanceof PDFormXObject) {
+                    PDFormXObject form = (PDFormXObject) xobject;
+                    count += optimizeResources(document, form.getResources(), level, visited);
+                }
+            } catch (Exception ignored) {
             }
         }
         return count;
+    }
+
+    private static boolean optimizeImageStream(PDImageXObject img, CompressionLevel level) {
+        try {
+            COSStream cos = img.getCOSObject();
+            if (cos == null) return false;
+
+            BufferedImage rawImage = img.getImage();
+            if (rawImage == null) return false;
+
+            int origWidth = rawImage.getWidth();
+            int origHeight = rawImage.getHeight();
+            if (origWidth <= 0 || origHeight <= 0) return false;
+
+            int maxDim = level.getMaxDimension();
+            boolean needsRescaling = origWidth > maxDim || origHeight > maxDim;
+            BufferedImage processedImage = needsRescaling ? rescaleImage(rawImage, maxDim) : rawImage;
+
+            long originalStreamLength = getStreamLength(cos);
+
+            // If image has real alpha/transparency, only rescale if dimensions exceed limit
+            if (hasActualTransparency(processedImage)) {
+                return false;
+            }
+
+            // Compress to JPEG with explicit quality
+            byte[] jpegBytes = compressToJpeg(processedImage, level.getJpegQuality());
+            if (jpegBytes == null || jpegBytes.length == 0) return false;
+
+            // Only replace if new stream is smaller than original stream (or rescaled significantly)
+            if (originalStreamLength > 0 && jpegBytes.length >= originalStreamLength && !needsRescaling) {
+                return false;
+            }
+
+            // In-place replacement on existing COSStream: prevents orphan duplicate objects in COSDocument
+            cos.setItem(COSName.FILTER, COSName.DCT_DECODE);
+            cos.removeItem(COSName.DECODE_PARMS);
+            cos.setInt(COSName.WIDTH, processedImage.getWidth());
+            cos.setInt(COSName.HEIGHT, processedImage.getHeight());
+            cos.setInt(COSName.BITS_PER_COMPONENT, 8);
+            cos.setItem(COSName.COLORSPACE, COSName.DEVICERGB);
+
+            try (OutputStream os = cos.createRawOutputStream()) {
+                os.write(jpegBytes);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static long getStreamLength(COSStream cos) {
+        long len = cos.getInt(COSName.LENGTH);
+        if (len > 0) return len;
+        try (InputStream is = cos.createRawInputStream()) {
+            long count = 0;
+            byte[] buf = new byte[4096];
+            int r;
+            while ((r = is.read(buf)) != -1) count += r;
+            return count;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static byte[] compressToJpeg(BufferedImage image, float quality) throws IOException {
+        BufferedImage rgbImage;
+        if (image.getType() == BufferedImage.TYPE_INT_RGB) {
+            rgbImage = image;
+        } else {
+            int w = image.getWidth();
+            int h = image.getHeight();
+            rgbImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2 = rgbImage.createGraphics();
+            try {
+                g2.drawImage(image, 0, 0, Color.WHITE, null);
+            } finally {
+                g2.dispose();
+            }
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
+        if (!writers.hasNext()) {
+            writers = ImageIO.getImageWritersByFormatName("jpg");
+        }
+        if (!writers.hasNext()) {
+            throw new IllegalStateException("JPEG writer not available in runtime.");
+        }
+        ImageWriter writer = writers.next();
+        try (ImageOutputStream ios = ImageIO.createImageOutputStream(baos)) {
+            writer.setOutput(ios);
+            JPEGImageWriteParam params = new JPEGImageWriteParam(null);
+            params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            params.setCompressionQuality(quality);
+            writer.write(null, new IIOImage(rgbImage, null, null), params);
+        } finally {
+            writer.dispose();
+        }
+        return baos.toByteArray();
+    }
+
+    private static boolean hasActualTransparency(BufferedImage img) {
+        if (!img.getColorModel().hasAlpha()) {
+            return false;
+        }
+        int w = img.getWidth();
+        int h = img.getHeight();
+        int[] row = new int[w];
+        for (int y = 0; y < h; y++) {
+            img.getRGB(0, y, w, 1, row, 0, w);
+            for (int rgb : row) {
+                int alpha = (rgb >> 24) & 0xFF;
+                if (alpha < 250) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static BufferedImage rescaleImage(BufferedImage original, int maxDimension) {
@@ -216,7 +385,7 @@ public class PdfCompressService {
         int targetW = Math.max(1, (int) Math.round(width * scale));
         int targetH = Math.max(1, (int) Math.round(height * scale));
 
-        int imageType = (original.getType() == 0) ? BufferedImage.TYPE_INT_RGB : original.getType();
+        int imageType = original.getColorModel().hasAlpha() ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB;
         BufferedImage target = new BufferedImage(targetW, targetH, imageType);
 
         Graphics2D g2 = target.createGraphics();
@@ -230,9 +399,5 @@ public class PdfCompressService {
         }
 
         return target;
-    }
-
-    private static boolean hasAlpha(BufferedImage img) {
-        return img.getColorModel().hasAlpha();
     }
 }

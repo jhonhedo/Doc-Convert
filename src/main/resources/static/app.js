@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         queue: [], // Array of { id, file, name, size, status, progress, pdfBlob, previewB64, error }
         settings: {
-            hatchMode: 'default',
+            hatchMode: 'none', // Disabled by default, keep only if explicitly selected
             targetLayers: 'PARKING, ROAD, ACCESS_WIDTH, COVERED_AREA',
             dpi: 150
         },
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load saved settings
     try {
-        const saved = localStorage.getItem('docconvert_settings') || localStorage.getItem('cadconvert_settings');
+        const saved = localStorage.getItem('docconvert_settings_v2');
         if (saved) {
             state.settings = Object.assign(state.settings, JSON.parse(saved));
         }
@@ -83,20 +83,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (optTargetLayers) optTargetLayers.value = state.settings.targetLayers;
     if (optDpi) optDpi.value = String(state.settings.dpi);
 
+    const activeEngineBadge = document.getElementById('active-engine-badge');
+    function updateHatchBadge() {
+        if (!activeEngineBadge) return;
+        if (state.settings.hatchMode === 'none') {
+            activeEngineBadge.textContent = 'Hatch: OFF';
+            activeEngineBadge.className = 'tag tag-muted';
+        } else if (state.settings.hatchMode === 'all') {
+            activeEngineBadge.textContent = 'Hatch: Force Solid';
+            activeEngineBadge.className = 'tag tag-amber';
+        } else {
+            activeEngineBadge.textContent = 'Dynamic Hatch: ON';
+            activeEngineBadge.className = 'tag tag-blue';
+        }
+    }
+    updateHatchBadge();
+
     // Tools Navigation Dropdown
     const toolsDropdown = document.querySelector('.nav-dropdown');
-    const toolsDropdownBtn = document.getElementById('tools-dropdown-btn');
+    const toolsDropdownBtn = document.getElementById('tools-dropdown-btn') || document.querySelector('.nav-dropdown-toggle');
     if (toolsDropdown && toolsDropdownBtn) {
         toolsDropdownBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             const isOpen = toolsDropdown.classList.toggle('is-open');
+            toolsDropdown.classList.toggle('open', isOpen);
             toolsDropdownBtn.setAttribute('aria-expanded', String(isOpen));
         });
 
         document.addEventListener('click', (e) => {
             if (!toolsDropdown.contains(e.target)) {
                 toolsDropdown.classList.remove('is-open');
+                toolsDropdown.classList.remove('open');
+                toolsDropdownBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && (toolsDropdown.classList.contains('is-open') || toolsDropdown.classList.contains('open'))) {
+                toolsDropdown.classList.remove('is-open');
+                toolsDropdown.classList.remove('open');
                 toolsDropdownBtn.setAttribute('aria-expanded', 'false');
             }
         });
@@ -158,6 +184,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (files && files.length > 0) {
                 handleSelectedFiles(files);
             }
+        });
+
+        dropZone.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('label') || e.target.closest('a') || e.target.closest('input')) {
+                return;
+            }
+            if (fileInput) fileInput.click();
         });
     }
 
@@ -422,7 +455,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     if (btnConvertAll) {
         btnConvertAll.addEventListener('click', async () => {
-            const readyItems = state.queue.filter(it => it.status === 'ready' || it.status === 'error');
+            let readyItems = state.queue.filter(it => it.status === 'ready' || it.status === 'error');
+            if (readyItems.length === 0 && state.queue.length > 0) {
+                readyItems = state.queue; // Re-convert all items with updated settings
+            }
             if (readyItems.length === 0) return;
 
             btnConvertAll.disabled = true;
@@ -443,7 +479,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData();
             formData.append('file', item.file, item.name);
             formData.append('filename', item.name);
-            formData.append('layers', state.settings.targetLayers);
+            formData.append('hatchMode', state.settings.hatchMode);
+            formData.append('layers', state.settings.hatchMode === 'none' ? '' : state.settings.targetLayers);
             formData.append('format', 'json'); // Request JSON with both PDF and preview base64
             formData.append('dpi', state.settings.dpi);
 
@@ -456,7 +493,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Accept': 'application/json',
                     'X-Output-Format': 'json',
                     'X-Filename': item.name,
-                    'X-Target-Layers': state.settings.targetLayers
+                    'X-Hatch-Mode': state.settings.hatchMode,
+                    'X-Target-Layers': state.settings.hatchMode === 'none' ? '' : state.settings.targetLayers
                 },
                 body: formData
             });
@@ -584,11 +622,16 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const formData = new FormData();
             formData.append('file', item.file, item.name);
-            formData.append('layers', state.settings.targetLayers);
+            formData.append('hatchMode', state.settings.hatchMode);
+            formData.append('layers', state.settings.hatchMode === 'none' ? '' : state.settings.targetLayers);
             formData.append('dpi', state.settings.dpi);
 
             const res = await fetch('/api/preview', {
                 method: 'POST',
+                headers: {
+                    'X-Hatch-Mode': state.settings.hatchMode,
+                    'X-Target-Layers': state.settings.hatchMode === 'none' ? '' : state.settings.targetLayers
+                },
                 body: formData
             });
 
@@ -642,28 +685,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnSaveSettings && settingsModal) {
         btnSaveSettings.addEventListener('click', () => {
-            state.settings.hatchMode = optHatchMode ? optHatchMode.value : 'default';
+            state.settings.hatchMode = optHatchMode ? optHatchMode.value : 'none';
             state.settings.targetLayers = optTargetLayers ? optTargetLayers.value.trim() : '';
             state.settings.dpi = optDpi ? parseInt(optDpi.value, 10) : 150;
 
             try {
-                localStorage.setItem('docconvert_settings', JSON.stringify(state.settings));
+                localStorage.setItem('docconvert_settings_v2', JSON.stringify(state.settings));
             } catch (e) {}
 
-            const activeEngineBadge = document.getElementById('active-engine-badge');
-            if (activeEngineBadge) {
-                if (state.settings.hatchMode === 'none') {
-                    activeEngineBadge.textContent = 'Dynamic Hatch: OFF';
-                    activeEngineBadge.className = 'tag tag-muted';
-                } else if (state.settings.hatchMode === 'all') {
-                    activeEngineBadge.textContent = 'Hatch: Force Solid';
-                    activeEngineBadge.className = 'tag tag-amber';
-                } else {
-                    activeEngineBadge.textContent = 'Dynamic Hatch: ON';
-                    activeEngineBadge.className = 'tag tag-blue';
-                }
-            }
-
+            updateHatchBadge();
             settingsModal.style.display = 'none';
         });
     }
@@ -671,13 +701,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnResetSettings) {
         btnResetSettings.addEventListener('click', () => {
             state.settings = {
-                hatchMode: 'default',
+                hatchMode: 'none',
                 targetLayers: 'PARKING, ROAD, ACCESS_WIDTH, COVERED_AREA',
                 dpi: 150
             };
-            if (optHatchMode) optHatchMode.value = 'default';
+            if (optHatchMode) optHatchMode.value = 'none';
             if (optTargetLayers) optTargetLayers.value = state.settings.targetLayers;
             if (optDpi) optDpi.value = '150';
+            updateHatchBadge();
         });
     }
 
@@ -799,33 +830,6 @@ curl http://localhost:8080/api/health`
         btnOpenApi.addEventListener('click', () => {
             const apiSection = document.getElementById('api-section');
             if (apiSection) apiSection.scrollIntoView({ behavior: 'smooth' });
-        });
-    }
-
-    // =========================================================================
-    // Multi-Tool Navigation Dropdown
-    // =========================================================================
-    const toolsDropdown = document.querySelector('.nav-dropdown');
-    const toolsDropdownBtn = document.querySelector('.nav-dropdown-toggle');
-    if (toolsDropdown && toolsDropdownBtn) {
-        toolsDropdownBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = toolsDropdown.classList.toggle('open');
-            toolsDropdownBtn.setAttribute('aria-expanded', String(isOpen));
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!toolsDropdown.contains(e.target)) {
-                toolsDropdown.classList.remove('open');
-                toolsDropdownBtn.setAttribute('aria-expanded', 'false');
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && toolsDropdown.classList.contains('open')) {
-                toolsDropdown.classList.remove('open');
-                toolsDropdownBtn.setAttribute('aria-expanded', 'false');
-            }
         });
     }
 
@@ -975,6 +979,12 @@ curl http://localhost:8080/api/health`
                 addFilesToMerge(e.dataTransfer.files);
             }
         });
+        mergeDropzone.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('label') || e.target.closest('a') || e.target.closest('input')) {
+                return;
+            }
+            if (mergeInput) mergeInput.click();
+        });
     }
 
     if (btnExecuteMerge) {
@@ -1096,6 +1106,12 @@ curl http://localhost:8080/api/health`
                 setCompressFile(e.dataTransfer.files[0]);
             }
         });
+        compressDropzone.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('label') || e.target.closest('a') || e.target.closest('input') || e.target.closest('.compress-tier-card')) {
+                return;
+            }
+            if (compressInput) compressInput.click();
+        });
     }
 
     document.querySelectorAll('.compress-tier-card').forEach(card => {
@@ -1144,7 +1160,20 @@ curl http://localhost:8080/api/health`
 
                 if (resOrigSize) resOrigSize.textContent = formatBytes(data.originalSize);
                 if (resNewSize) resNewSize.textContent = formatBytes(data.compressedSize);
-                if (resSavings) resSavings.textContent = `${data.savingsPercentage.toFixed(1)}%`;
+                const resultTitle = compressResultBox ? compressResultBox.querySelector('h4') : null;
+                if (data.savingsPercentage > 0.0) {
+                    if (resSavings) {
+                        resSavings.textContent = `${data.savingsPercentage.toFixed(1)}%`;
+                        resSavings.classList.add('savings');
+                    }
+                    if (resultTitle) resultTitle.textContent = 'Compression Completed Successfully!';
+                } else {
+                    if (resSavings) {
+                        resSavings.textContent = 'Already Optimal';
+                        resSavings.classList.remove('savings');
+                    }
+                    if (resultTitle) resultTitle.textContent = 'Document is already fully optimized!';
+                }
                 if (compressResultBox) compressResultBox.style.display = 'block';
 
             } catch (err) {

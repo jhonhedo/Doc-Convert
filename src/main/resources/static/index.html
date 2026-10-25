@@ -212,7 +212,7 @@
                         <div class="global-options-preview">
                             <span class="text-muted">Target:</span>
                             <span class="tag tag-cyan">PDF (Vector)</span>
-                            <span class="tag tag-blue" id="active-engine-badge">Dynamic Hatch: ON</span>
+                            <span class="tag tag-muted" id="active-engine-badge">Hatch: OFF</span>
                         </div>
                         <div class="global-actions">
                             <button type="button" class="btn btn-secondary btn-md" id="btn-global-settings" aria-label="Open CAD Conversion Settings">
@@ -578,11 +578,11 @@
                 <div class="form-group">
                     <label class="form-label" for="opt-hatch-mode">Dynamic Hatch Rule Engine</label>
                     <select class="form-select" id="opt-hatch-mode">
-                        <option value="default" selected>Enabled (Dynamic Architectural & Civil Patterns)</option>
+                        <option value="none" selected>Disabled by Default (Clean Vector Lines)</option>
+                        <option value="default">Enabled (Dynamic Architectural &amp; Civil Patterns)</option>
                         <option value="all">Force All Hatches as Solid</option>
-                        <option value="none">Disable Hatch Rendering</option>
                     </select>
-                    <span class="form-help">Controls whether specialized civil patterns (parking, road, compoundable) are drawn.</span>
+                    <span class="form-help">Hatching is disabled by default for clean blueprints. Select an option above if you need colored pattern fills.</span>
                 </div>
 
                 <div class="form-group">
@@ -751,6 +751,6 @@
     </footer>
 
     <!-- App JavaScript -->
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>

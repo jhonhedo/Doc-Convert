@@ -20,6 +20,33 @@ public class DynamicHatchRuleEngine {
     private final Set<String> targetLayers = new HashSet<>();
     private final Map<String, Color> customLayerColors = new LinkedHashMap<>();
     private boolean matchBySubstring = true;
+    private boolean enabled = true;
+    private boolean forceSolidAll = false;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isForceSolidAll() {
+        return forceSolidAll;
+    }
+
+    public void setForceSolidAll(boolean forceSolidAll) {
+        this.forceSolidAll = forceSolidAll;
+    }
+
+    /**
+     * Returns a disabled hatch engine instance where hatching is turned off.
+     */
+    public static DynamicHatchRuleEngine getDisabledEngine() {
+        DynamicHatchRuleEngine disabled = new DynamicHatchRuleEngine(false);
+        disabled.setEnabled(false);
+        return disabled;
+    }
 
     /**
      * Returns the singleton / default instance used when no specific engine is supplied.
@@ -170,12 +197,21 @@ public class DynamicHatchRuleEngine {
      * Determines whether an entity on this layer should receive custom dynamic hatching.
      */
     public boolean shouldHatch(String layerName) {
-        if (layerName == null || targetLayers.isEmpty()) {
+        if (!enabled) {
+            return false;
+        }
+        if (layerName == null) {
             return false;
         }
         String uLayer = layerName.toUpperCase().trim();
         // Layer 0 and Defpoints are standard AutoCAD structural/drafting layers and should never be auto-hatched
         if ("0".equals(uLayer) || "DEFPOINTS".equals(uLayer)) {
+            return false;
+        }
+        if (forceSolidAll) {
+            return true;
+        }
+        if (targetLayers.isEmpty()) {
             return false;
         }
         if (targetLayers.contains(uLayer)) {

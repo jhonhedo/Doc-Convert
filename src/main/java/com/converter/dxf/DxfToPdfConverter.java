@@ -332,7 +332,7 @@ public class DxfToPdfConverter {
     }
 
     public static PDDocument convertToPdfDocument(String dxfContent, DynamicHatchRuleEngine hatchEngine, File baseDir) throws IOException {
-        DynamicHatchRuleEngine engine = (hatchEngine != null) ? hatchEngine : DynamicHatchRuleEngine.getDefault();
+        DynamicHatchRuleEngine engine = (hatchEngine != null) ? hatchEngine : DynamicHatchRuleEngine.getDisabledEngine();
         List<DxfTokenizer.Group> groups = DxfTokenizer.tokenize(dxfContent);
 
         // Header extents ($EXTMIN and $EXTMAX)
@@ -1511,7 +1511,7 @@ public class DxfToPdfConverter {
                 final List<Double> blgs = bulges;
                 final boolean columnPoly = isColumn;
                 final String fLayer = layerName;
-                final Color polyHatchColor = (closed && hatchEngine != null && hatchEngine.shouldHatch(layerName))
+                final Color polyHatchColor = (closed && hatchEngine != null && hatchEngine.isEnabled() && hatchEngine.shouldHatch(layerName))
                         ? hatchEngine.resolveHatchColor(layerName, resolvedAci)
                         : null;
 
@@ -1646,6 +1646,9 @@ public class DxfToPdfConverter {
                 final double angle = effAngle, sc = hScale, spacing = effSpacing;
                 final Path2D.Double hatchPath = parseHatchLoops(groups);
                 if (hatchPath.getPathIterator(null).isDone()) return null;
+                if (hatchEngine != null && !hatchEngine.isEnabled()) {
+                    return null; // Hatch rendering disabled by default unless explicitly selected
+                }
                 final String fHatchLayer = layerName;
                 final Color bgHatchColor = (hatchEngine != null && hatchEngine.shouldHatch(layerName))
                         ? hatchEngine.resolveHatchColor(layerName, resolvedAci)

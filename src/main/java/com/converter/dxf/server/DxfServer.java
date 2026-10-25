@@ -265,11 +265,8 @@ public class DxfServer {
                     return;
                 }
 
-                // Setup Hatch Engine based on layers if provided
-                DynamicHatchRuleEngine hatchEngine = DynamicHatchRuleEngine.getDefault();
-                if (upload.targetLayers != null && !upload.targetLayers.isEmpty()) {
-                    hatchEngine = new DynamicHatchRuleEngine(upload.targetLayers);
-                }
+                // Setup Hatch Engine (disabled by default, enabled only if explicitly selected)
+                DynamicHatchRuleEngine hatchEngine = resolveHatchEngine(upload);
 
                 // Render vector PDF in-memory
                 byte[] pdfBytes;
@@ -395,10 +392,7 @@ public class DxfServer {
                     return;
                 }
 
-                DynamicHatchRuleEngine hatchEngine = DynamicHatchRuleEngine.getDefault();
-                if (upload.targetLayers != null && !upload.targetLayers.isEmpty()) {
-                    hatchEngine = new DynamicHatchRuleEngine(upload.targetLayers);
-                }
+                DynamicHatchRuleEngine hatchEngine = resolveHatchEngine(upload);
 
                 byte[] pngBytes;
                 try (PDDocument doc = DxfToPdfConverter.convertToPdfDocument(upload.dxfContent, hatchEngine, null)) {
@@ -685,6 +679,8 @@ public class DxfServer {
             Headers respHeaders = exchange.getResponseHeaders();
             respHeaders.set("Content-Type", mimeType);
             respHeaders.set("Content-Length", String.valueOf(content.length));
+            respHeaders.set("Cache-Control", "no-cache, no-store, must-revalidate");
+            respHeaders.set("Pragma", "no-cache");
             exchange.sendResponseHeaders(200, content.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(content);
@@ -695,6 +691,27 @@ public class DxfServer {
     // =========================================================================
     // Helper Methods & Request Parser
     // =========================================================================
+
+    private static DynamicHatchRuleEngine resolveHatchEngine(ParsedUpload upload) {
+        if ("all".equalsIgnoreCase(upload.hatchMode)) {
+            DynamicHatchRuleEngine engine = new DynamicHatchRuleEngine(true);
+            engine.setEnabled(true);
+            engine.setForceSolidAll(true);
+            return engine;
+        } else if ("default".equalsIgnoreCase(upload.hatchMode) || "enabled".equalsIgnoreCase(upload.hatchMode) || "true".equalsIgnoreCase(upload.hatchMode)) {
+            DynamicHatchRuleEngine engine;
+            if (upload.targetLayers != null && !upload.targetLayers.isEmpty()) {
+                engine = new DynamicHatchRuleEngine(upload.targetLayers);
+            } else {
+                engine = DynamicHatchRuleEngine.getDefault();
+            }
+            engine.setEnabled(true);
+            return engine;
+        } else {
+            // Disabled by default (upload.hatchMode is "none" or omitted)
+            return DynamicHatchRuleEngine.getDisabledEngine();
+        }
+    }
 
     private static class PayloadTooLargeException extends IOException {
         public PayloadTooLargeException(String message) {
@@ -721,6 +738,7 @@ public class DxfServer {
         boolean returnJson = false;
         String format = "pdf";
         String compressLevel = "medium";
+        String hatchMode = "none"; // Disabled by default
         int dpi = 150;
     }
 
@@ -733,6 +751,11 @@ public class DxfServer {
         String xFilename = headers.getFirst("X-Filename");
         String xLayers = headers.getFirst("X-Target-Layers");
         String xLevel = headers.getFirst("X-Compression-Level");
+        String xHatchMode = headers.getFirst("X-Hatch-Mode");
+
+        if (xHatchMode != null && !xHatchMode.trim().isEmpty()) {
+            parsed.hatchMode = xHatchMode.trim();
+        }
 
         if (accept != null && accept.contains("application/json")) {
             parsed.returnJson = true;
@@ -759,6 +782,8 @@ public class DxfServer {
             if (qMap.containsKey("filename")) parsed.filename = qMap.get("filename");
             if (qMap.containsKey("format") && "json".equalsIgnoreCase(qMap.get("format"))) parsed.returnJson = true;
             if (qMap.containsKey("level")) parsed.compressLevel = qMap.get("level");
+            if (qMap.containsKey("hatchMode")) parsed.hatchMode = qMap.get("hatchMode");
+            if (qMap.containsKey("hatch")) parsed.hatchMode = qMap.get("hatch");
             if (qMap.containsKey("dpi")) {
                 try { parsed.dpi = Integer.parseInt(qMap.get("dpi")); } catch (Exception ignored) {}
             }
@@ -855,6 +880,8 @@ public class DxfServer {
                 if ("json".equalsIgnoreCase(out.format)) out.returnJson = true;
             } else if (headerText.contains("name=\"level\"")) {
                 out.compressLevel = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"hatchMode\"") || headerText.contains("name=\"hatch\"")) {
+                out.hatchMode = new String(partBytes, StandardCharsets.UTF_8).trim();
             }
         }
     }

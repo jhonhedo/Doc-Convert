@@ -2,6 +2,7 @@ package com.converter.dxf.pdf;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.junit.jupiter.api.Test;
@@ -70,6 +71,44 @@ public class PdfMergeCompressTest {
         // Verify valid PDF output
         try (PDDocument doc = PDDocument.load(res.getPdfBytes())) {
             assertEquals(3, doc.getNumberOfPages());
+        }
+    }
+
+    @Test
+    public void testCompressFinalWithImage() throws IOException {
+        java.io.File file = new java.io.File("FINAL with image.pdf");
+        if (file.exists()) {
+            byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+            try (PDDocument d = PDDocument.load(bytes)) {
+                for (PDPage p : d.getPages()) {
+                    PDResources r = p.getResources();
+                    if (r != null) {
+                        for (org.apache.pdfbox.cos.COSName n : r.getXObjectNames()) {
+                            org.apache.pdfbox.pdmodel.graphics.PDXObject xo = r.getXObject(n);
+                            if (xo instanceof org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject) {
+                                org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject im = (org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject) xo;
+                                System.out.println("Image " + n.getName() + " filter=" + im.getCOSObject().getItem(org.apache.pdfbox.cos.COSName.FILTER) + " len=" + im.getCOSObject().getInt(org.apache.pdfbox.cos.COSName.LENGTH) + " size=" + im.getWidth() + "x" + im.getHeight());
+                            }
+                        }
+                    }
+                }
+            }
+            for (PdfCompressService.CompressionLevel lvl : PdfCompressService.CompressionLevel.values()) {
+                PdfCompressService.CompressResult res = PdfCompressService.compress(bytes, lvl);
+                System.out.println(lvl + " result: orig=" + res.getOriginalSize() + 
+                                   ", comp=" + res.getCompressedSize() + 
+                                   ", savings=" + String.format("%.1f%%", res.getSavingsPercentage()) + 
+                                   ", images=" + res.getOptimizedImagesCount());
+                
+                assertTrue(res.getSavingsPercentage() > 0.0, "Expected positive savings for " + lvl);
+                assertTrue(res.getCompressedSize() < res.getOriginalSize());
+                assertEquals(1, res.getOptimizedImagesCount());
+
+                // Verify output is a valid, readable PDF
+                try (PDDocument doc = PDDocument.load(res.getPdfBytes())) {
+                    assertEquals(res.getTotalPages(), doc.getNumberOfPages());
+                }
+            }
         }
     }
 }
