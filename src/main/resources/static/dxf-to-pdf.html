@@ -92,36 +92,69 @@
             </a>
 
             <nav class="nav-links" aria-label="Main Navigation">
-                <div class="nav-dropdown">
-                    <button class="nav-dropdown-toggle active" aria-expanded="false">
-                        <span>Tools</span>
+                <!-- CAD Converters: Prominent First -->
+                <div class="nav-cad-group">
+                    <a href="/dxf-to-pdf" class="nav-link nav-link-cad active" title="Convert AutoCAD DXF drawings to Vector PDF">
+                        <span class="nav-badge-dxf">DXF</span>
+                        <span>DXF to PDF</span>
+                    </a>
+                    <a href="/dwg-to-pdf" class="nav-link nav-link-cad" title="Convert native DWG drawings to Vector PDF">
+                        <span class="nav-badge-dwg">DWG</span>
+                        <span>DWG to PDF</span>
+                    </a>
+                </div>
+
+                <!-- Drawing Set Tools: Secondary Dropdown -->
+                <div class="nav-dropdown" id="tools-dropdown">
+                    <button class="nav-dropdown-toggle" aria-expanded="false" id="tools-dropdown-btn">
+                        <span>Drawing Set Tools</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
-                    <div class="nav-dropdown-menu">
-                        <div class="dropdown-group-title">CAD Converters</div>
-                        <a href="/dxf-to-pdf" class="dropdown-item active">
-                            <div class="dropdown-item-icon">DXF</div>
-                            <div class="dropdown-item-info">
-                                <span class="dropdown-item-title">DXF to PDF</span>
-                                <span class="dropdown-item-desc">Vector CAD drawing conversion</span>
-                            </div>
-                        </a>
-                        <a href="/dwg-to-pdf" class="dropdown-item">
-                            <div class="dropdown-item-icon">DWG</div>
-                            <div class="dropdown-item-info">
-                                <span class="dropdown-item-title">DWG to PDF</span>
-                                <span class="dropdown-item-desc">Native AutoCAD binary support</span>
-                            </div>
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <div class="dropdown-group-title">PDF Optimization</div>
+                    <div class="nav-dropdown-menu" id="tools-dropdown-menu">
+                        <div class="dropdown-group-title">Drawing Set Tools</div>
                         <a href="/merge-pdf" class="dropdown-item">
                             <div class="dropdown-item-icon">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
                             </div>
                             <div class="dropdown-item-info">
-                                <span class="dropdown-item-title">Merge PDF</span>
-                                <span class="dropdown-item-desc">Combine multi-sheet sets</span>
+                                <span class="dropdown-item-title">Merge Drawing Sets</span>
+                                <span class="dropdown-item-desc">Combine multi-sheet blueprint sets</span>
+                            </div>
+                        </a>
+                        <a href="/split-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3v18M8 3v18"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Split &amp; Extract Sheets</span>
+                                <span class="dropdown-item-desc">Extract pages by range or output ZIP</span>
+                            </div>
+                        </a>
+                        <a href="/resize-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Resize &amp; Rescale Pages</span>
+                                <span class="dropdown-item-desc">Fit to A0–A4 or custom plot sizes</span>
+                            </div>
+                        </a>
+                        <a href="/rotate-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Rotate Drawing Sheets</span>
+                                <span class="dropdown-item-desc">90°, 180°, 270° orientation fix</span>
+                            </div>
+                        </a>
+                        <a href="/stamp-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Approval &amp; Watermark Stamp</span>
+                                <span class="dropdown-item-desc">Vector text stamp &amp; date macros</span>
                             </div>
                         </a>
                         <a href="/compress-pdf" class="dropdown-item">
@@ -129,8 +162,8 @@
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                             </div>
                             <div class="dropdown-item-info">
-                                <span class="dropdown-item-title">Compress PDF</span>
-                                <span class="dropdown-item-desc">Downsample without vector loss</span>
+                                <span class="dropdown-item-title">Compress for Portal Upload</span>
+                                <span class="dropdown-item-desc">Meet municipal permit upload limits</span>
                             </div>
                         </a>
                         <div class="dropdown-divider"></div>

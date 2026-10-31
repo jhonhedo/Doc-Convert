@@ -116,7 +116,7 @@ body {
 }
 
 /* Header & Navbar */
-.navbar {
+.navbar, .app-header {
     position: sticky;
     top: 0;
     z-index: 100;
@@ -125,7 +125,7 @@ body {
     border-bottom: 1px solid var(--border-color);
 }
 
-.nav-container {
+.nav-container, .header-container {
     max-width: 1240px;
     margin: 0 auto;
     padding: 0.85rem 1.5rem;
@@ -169,7 +169,7 @@ body {
     letter-spacing: 0.1em;
 }
 
-.nav-links {
+.nav-links, .main-nav {
     display: flex;
     align-items: center;
     gap: 1.5rem;
@@ -1474,7 +1474,14 @@ body {
         grid-template-columns: 1fr 1fr;
     }
 
-    .nav-links {
+    .nav-links, .main-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .nav-links .nav-link:not(.nav-link-cad):not([href="/tools"]),
+    .main-nav .nav-link:not(.nav-link-cad):not([href="/tools"]) {
         display: none;
     }
 
@@ -1484,7 +1491,50 @@ body {
 }
 
 @media (max-width: 640px) {
+    .nav-container, .header-container {
+        padding: 0.5rem 0.75rem;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .nav-links, .main-nav {
+        order: 3;
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
+        overflow-x: auto;
+        gap: 0.35rem;
+        padding-top: 0.3rem;
+        border-top: 1px solid rgba(56, 189, 248, 0.1);
+    }
+
+    .nav-cad-group {
+        gap: 0.35rem;
+        padding: 0.15rem 0.3rem;
+    }
+
+    .nav-link-cad {
+        font-size: 0.78rem;
+    }
+
+    .nav-dropdown-toggle {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.6rem;
+    }
+
     .footer-container {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-title {
+        font-size: 1.7rem;
+    }
+
+    .converter-card {
+        padding: 1.25rem 0.75rem;
+    }
+
+    .tools-grid {
         grid-template-columns: 1fr;
     }
 
@@ -2302,8 +2352,49 @@ body {
 }
 
 /* ==========================================================================
-   Drawing Set Tool Chaining Actions
+   CAD Prominent Nav & Drawing Set Tool Chaining Actions
    ========================================================================== */
+.nav-cad-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0.4rem;
+    background: rgba(0, 240, 255, 0.05);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    border-radius: var(--radius-sm);
+}
+
+.nav-link-cad {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.nav-link-cad:hover {
+    color: var(--cyan-primary);
+}
+
+.nav-badge-dxf, .nav-badge-dwg {
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-weight: 800;
+    background: rgba(0, 240, 255, 0.15);
+    color: var(--cyan-primary);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+.nav-badge-dwg {
+    background: rgba(37, 99, 235, 0.2);
+    color: #60a5fa;
+    border-color: rgba(37, 99, 235, 0.4);
+}
+
 .queue-item-chain {
     width: 100%;
     margin-top: 0.6rem;

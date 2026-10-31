@@ -26,7 +26,31 @@
     </url>
     <url>
         <loc>https://docconvert.net/compress-pdf</loc>
-        <lastmod>2026-10-24</lastmod>
+        <lastmod>2026-10-31</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docconvert.net/split-pdf</loc>
+        <lastmod>2026-10-31</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docconvert.net/resize-pdf</loc>
+        <lastmod>2026-10-31</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docconvert.net/rotate-pdf</loc>
+        <lastmod>2026-10-31</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://docconvert.net/stamp-pdf</loc>
+        <lastmod>2026-10-31</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
     </url>
