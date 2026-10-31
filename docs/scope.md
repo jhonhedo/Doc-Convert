@@ -66,3 +66,4 @@ Before any out-of-scope feature is reconsidered, all of the following evidentiar
    - Official municipal permitting portal guidelines (e.g., NYC DOB NOW, Chicago E-Plan, Florida Building Code portals) requiring a specific capability as a condition of submittal acceptance.
 4. **Zero Impact on Vector Architecture**:
    - Any approved feature must strictly execute within volatile memory (zero disk retention) and must not degrade CAD vector precision or engine security.
+
