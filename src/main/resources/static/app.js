@@ -917,8 +917,17 @@ curl http://localhost:8080/api/health`
     const mergeTotalSize = document.getElementById('merge-total-size');
     const btnMergeClear = document.getElementById('btn-merge-clear');
     const btnExecuteMerge = document.getElementById('btn-execute-merge');
+    const mergeResultBox = document.getElementById('merge-result-box');
+    const resMergeCount = document.getElementById('res-merge-count');
+    const resMergeSize = document.getElementById('res-merge-size');
+    const btnDownloadMerged = document.getElementById('btn-download-merged');
+    const btnMergeChainCompress = document.getElementById('btn-merge-chain-compress');
+    const btnMergeChainStamp = document.getElementById('btn-merge-chain-stamp');
+    const btnMergeChainResize = document.getElementById('btn-merge-chain-resize');
 
     let mergeQueue = [];
+    let lastMergedBlob = null;
+    let lastMergedFilename = 'merged_drawing_set.pdf';
 
     function updateMergeUI() {
         if (!mergeQueueContainer || !mergeEmptyView) return;
@@ -1086,10 +1095,17 @@ curl http://localhost:8080/api/health`
                 }
 
                 const blob = await res.blob();
+                lastMergedBlob = blob;
+                lastMergedFilename = 'merged_drawing_set.pdf';
+
+                if (resMergeCount) resMergeCount.textContent = mergeQueue.length;
+                if (resMergeSize) resMergeSize.textContent = formatBytes(blob.size);
+                if (mergeResultBox) mergeResultBox.style.display = 'block';
+
                 const downloadUrl = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = downloadUrl;
-                a.download = 'merged_documents.pdf';
+                a.download = lastMergedFilename;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -1101,6 +1117,37 @@ curl http://localhost:8080/api/health`
                 btnExecuteMerge.disabled = false;
                 btnExecuteMerge.innerHTML = origHtml;
             }
+        });
+    }
+
+    if (btnDownloadMerged) {
+        btnDownloadMerged.addEventListener('click', () => {
+            if (!lastMergedBlob) return;
+            downloadBlob(lastMergedBlob, lastMergedFilename);
+        });
+    }
+
+    if (btnMergeChainCompress) {
+        btnMergeChainCompress.addEventListener('click', async () => {
+            if (!lastMergedBlob) return;
+            await CADHandoff.save(lastMergedFilename, lastMergedBlob);
+            window.location.href = '/compress-pdf';
+        });
+    }
+
+    if (btnMergeChainStamp) {
+        btnMergeChainStamp.addEventListener('click', async () => {
+            if (!lastMergedBlob) return;
+            await CADHandoff.save(lastMergedFilename, lastMergedBlob);
+            window.location.href = '/stamp-pdf';
+        });
+    }
+
+    if (btnMergeChainResize) {
+        btnMergeChainResize.addEventListener('click', async () => {
+            if (!lastMergedBlob) return;
+            await CADHandoff.save(lastMergedFilename, lastMergedBlob, { targetSize: 'a1' });
+            window.location.href = '/resize-pdf';
         });
     }
 
@@ -1267,6 +1314,25 @@ curl http://localhost:8080/api/health`
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        });
+    }
+
+    const btnCompressChainStamp = document.getElementById('btn-compress-chain-stamp');
+    const btnCompressChainMerge = document.getElementById('btn-compress-chain-merge');
+
+    if (btnCompressChainStamp) {
+        btnCompressChainStamp.addEventListener('click', async () => {
+            if (!lastCompressedBlob) return;
+            await CADHandoff.save(lastCompressedName, lastCompressedBlob);
+            window.location.href = '/stamp-pdf';
+        });
+    }
+
+    if (btnCompressChainMerge) {
+        btnCompressChainMerge.addEventListener('click', async () => {
+            if (!lastCompressedBlob) return;
+            await CADHandoff.save(lastCompressedName, lastCompressedBlob);
+            window.location.href = '/merge-pdf';
         });
     }
 
@@ -1691,6 +1757,32 @@ curl http://localhost:8080/api/health`
         });
     }
 
+    const btnResizeChainStamp = document.getElementById('btn-resize-chain-stamp');
+    const btnResizeChainMerge = document.getElementById('btn-resize-chain-merge');
+    const btnResizeChainCompress = document.getElementById('btn-resize-chain-compress');
+
+    if (btnResizeChainStamp) {
+        btnResizeChainStamp.addEventListener('click', async () => {
+            if (!lastResizedBlob) return;
+            await CADHandoff.save(lastResizedFilename, lastResizedBlob);
+            window.location.href = '/stamp-pdf';
+        });
+    }
+    if (btnResizeChainMerge) {
+        btnResizeChainMerge.addEventListener('click', async () => {
+            if (!lastResizedBlob) return;
+            await CADHandoff.save(lastResizedFilename, lastResizedBlob);
+            window.location.href = '/merge-pdf';
+        });
+    }
+    if (btnResizeChainCompress) {
+        btnResizeChainCompress.addEventListener('click', async () => {
+            if (!lastResizedBlob) return;
+            await CADHandoff.save(lastResizedFilename, lastResizedBlob);
+            window.location.href = '/compress-pdf';
+        });
+    }
+
     // =========================================================================
     // PDF Rotate Utility Logic
     // =========================================================================
@@ -2005,6 +2097,24 @@ curl http://localhost:8080/api/health`
         btnDownloadStamp.addEventListener('click', () => {
             if (!lastStampedBlob) return;
             downloadBlob(lastStampedBlob, lastStampedFilename);
+        });
+    }
+
+    const btnStampChainMerge = document.getElementById('btn-stamp-chain-merge');
+    const btnStampChainCompress = document.getElementById('btn-stamp-chain-compress');
+
+    if (btnStampChainMerge) {
+        btnStampChainMerge.addEventListener('click', async () => {
+            if (!lastStampedBlob) return;
+            await CADHandoff.save(lastStampedFilename, lastStampedBlob);
+            window.location.href = '/merge-pdf';
+        });
+    }
+    if (btnStampChainCompress) {
+        btnStampChainCompress.addEventListener('click', async () => {
+            if (!lastStampedBlob) return;
+            await CADHandoff.save(lastStampedFilename, lastStampedBlob);
+            window.location.href = '/compress-pdf';
         });
     }
 

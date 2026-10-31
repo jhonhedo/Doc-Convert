@@ -246,6 +246,47 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- Merge Result Box -->
+                    <div class="compression-result-card" id="merge-result-box" style="display: none; margin-top: 1.5rem;">
+                        <h4 style="color: var(--cyan-primary); margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Merge Completed Successfully!</h4>
+                        <div class="result-metrics-grid">
+                            <div class="result-metric">
+                                <div class="result-metric-label">Merged Sheets</div>
+                                <div class="result-metric-val" id="res-merge-count">0</div>
+                            </div>
+                            <div class="result-metric">
+                                <div class="result-metric-label">Master Size</div>
+                                <div class="result-metric-val" id="res-merge-size">0 KB</div>
+                            </div>
+                            <div class="result-metric">
+                                <div class="result-metric-label">Linework</div>
+                                <div class="result-metric-val" style="color: var(--cyan-primary);">100% Vector</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.25rem;">
+                            <button type="button" class="btn btn-primary btn-md glow" id="btn-download-merged">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                <span>Download Merged PDF</span>
+                            </button>
+                        </div>
+                        <!-- Chained Next Steps -->
+                        <div class="chain-next-card">
+                            <span class="chain-next-title">Next Step:</span>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-merge-chain-compress">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                                <span>Compress for portal upload</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-merge-chain-stamp">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <span>Add Stamp / Watermark</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-merge-chain-resize">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                                <span>Resize pages</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
