@@ -1337,7 +1337,7 @@ public class DxfToPdfConverter {
                 case 40: r = g.asDouble(); textHeight = g.asDouble(); minorRatio = g.asDouble(); splineKnots.add(g.asDouble()); break;
                 case 41: sx = g.asDouble(); break;
                 case 42: sy = g.asDouble(); break;
-                case 50: rotationDeg = g.asDouble(); break;
+                case 50: rotationDeg = g.asDouble(); startA = g.asDouble(); break;
                 case 51: endA = g.asDouble(); break;
                 case 1:
                 case 3: textVal.append(g.value()); break;
@@ -1455,8 +1455,17 @@ public class DxfToPdfConverter {
             case "ARC": {
                 final double cx = x1, cy = y1, radius = r, sa = startA, ea = endA;
                 return new DxfShape() {
+                    private Path2D.Double createPath() {
+                        double startRad = Math.toRadians(sa);
+                        double endRad = Math.toRadians(ea);
+                        double sweep = endRad - startRad;
+                        if (sweep <= 0) sweep += 2 * Math.PI;
+                        Path2D.Double path = new Path2D.Double();
+                        BulgeConverter.appendArcToBezier(path, cx, cy, radius, startRad, sweep);
+                        return path;
+                    }
                     public Rectangle2D getBounds() {
-                        return new Rectangle2D.Double(cx - radius, cy - radius, radius * 2, radius * 2);
+                        return createPath().getBounds2D();
                     }
                     public void render(PDPageContentStream cs, AffineTransform xform, double scale) throws IOException {
                         render(cs, xform, scale, null);
@@ -1465,13 +1474,7 @@ public class DxfToPdfConverter {
                         Color strokeColor = (isByBlock && inheritedColor != null) ? inheritedColor : finalColor;
                         cs.setStrokingColor(strokeColor);
                         cs.setLineWidth(finalStrokeWidth);
-                        double startRad = Math.toRadians(sa);
-                        double endRad = Math.toRadians(ea);
-                        double sweep = endRad - startRad;
-                        if (sweep <= 0) sweep += 2 * Math.PI;
-
-                        Path2D.Double path = new Path2D.Double();
-                        BulgeConverter.appendArcToBezier(path, cx, cy, radius, startRad, sweep);
+                        Path2D.Double path = createPath();
                         emitPath(cs, path, xform);
                         cs.stroke();
                     }
@@ -1862,7 +1865,7 @@ public class DxfToPdfConverter {
                 final double rotDeg = rotationDeg;
                 final Point2D.Double basePt = block.basePoint();
                 final List<DxfShape> childShapes = block.shapes();
-                final boolean dimensionEntity = isDim;
+                final boolean dimensionEntity = isDimEntity;
                 final int blockColorAci = colorAci;
 
                 return new DxfShape() {

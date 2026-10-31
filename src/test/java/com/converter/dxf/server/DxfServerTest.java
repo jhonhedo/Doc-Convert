@@ -242,6 +242,65 @@ public class DxfServerTest {
         assertTrue(json.contains("\"pdfBase64\":"));
     }
 
+    @Test
+    public void testPdfMergeCorruptInputReturns400() throws Exception {
+        byte[] validPdf;
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            doc.addPage(new org.apache.pdfbox.pdmodel.PDPage());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            doc.save(baos);
+            validPdf = baos.toByteArray();
+        }
+
+        byte[] corruptPdf = "Corrupted non-pdf binary content".getBytes(StandardCharsets.UTF_8);
+
+        String boundary = "----CorruptMergeBoundary123";
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+        body.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(("Content-Disposition: form-data; name=\"file\"; filename=\"valid.pdf\"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(validPdf);
+        body.write("\r\n".getBytes(StandardCharsets.UTF_8));
+
+        body.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(("Content-Disposition: form-data; name=\"file\"; filename=\"corrupt.pdf\"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        body.write(corruptPdf);
+        body.write("\r\n".getBytes(StandardCharsets.UTF_8));
+        body.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+
+        URL url = new URL("http://127.0.0.1:" + port + "/api/pdf/merge");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(body.toByteArray());
+        }
+
+        assertEquals(400, conn.getResponseCode(), "Corrupt PDF input must yield HTTP 400 Bad Request");
+        String errorJson = readStream(conn.getErrorStream());
+        assertTrue(errorJson.contains("\"code\":\"INVALID_PDF\""));
+    }
+
+    @Test
+    public void testPdfCompressCorruptInputReturns400() throws Exception {
+        byte[] corruptBytes = "Garbage content with no %PDF- header".getBytes(StandardCharsets.UTF_8);
+
+        URL url = new URL("http://127.0.0.1:" + port + "/api/pdf/compress");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/pdf");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(corruptBytes);
+        }
+
+        assertEquals(400, conn.getResponseCode(), "Corrupt PDF compress input must yield HTTP 400 Bad Request");
+        String errorJson = readStream(conn.getErrorStream());
+        assertTrue(errorJson.contains("\"code\":\"INVALID_PDF\""));
+    }
+
 
 
     private static String readStream(InputStream is) throws IOException {

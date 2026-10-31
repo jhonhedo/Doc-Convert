@@ -138,11 +138,25 @@ public class PdfCompressService {
             throw new IllegalArgumentException("PDF content is empty.");
         }
 
+        if (!isValidPdfHeader(originalPdfBytes)) {
+            throw new IOException("The provided file is not a valid PDF document (missing %PDF- header).");
+        }
+
         long originalSize = originalPdfBytes.length;
         int optimizedImages = 0;
         int pageCount;
 
-        try (PDDocument document = PDDocument.load(new ByteArrayInputStream(originalPdfBytes), MemoryUsageSetting.setupMainMemoryOnly())) {
+        PDDocument document;
+        try {
+            document = PDDocument.load(new ByteArrayInputStream(originalPdfBytes), MemoryUsageSetting.setupMainMemoryOnly());
+        } catch (Exception e) {
+            throw new IOException("Unable to parse PDF document: " + e.getMessage(), e);
+        }
+
+        try {
+            if (document.getNumberOfPages() == 0) {
+                throw new IOException("PDF document contains no pages.");
+            }
             pageCount = document.getNumberOfPages();
 
             // 1. Strip unneeded metadata streams (reduces overhead while preserving page rendering)
@@ -174,7 +188,17 @@ public class PdfCompressService {
             }
 
             return new CompressResult(compressedBytes, originalSize, compressedBytes.length, pageCount, optimizedImages);
+        } finally {
+            try {
+                document.close();
+            } catch (Exception ignored) {}
         }
+    }
+
+    private static boolean isValidPdfHeader(byte[] bytes) {
+        if (bytes == null || bytes.length < 5) return false;
+        String header = new String(bytes, 0, Math.min(bytes.length, 1024), java.nio.charset.StandardCharsets.ISO_8859_1);
+        return header.contains("%PDF-");
     }
 
     private static void compressPageContents(PDDocument document) {
@@ -246,6 +270,7 @@ public class PdfCompressService {
                     }
                 } else if (xobject instanceof PDFormXObject) {
                     PDFormXObject form = (PDFormXObject) xobject;
+                    compressStreamIfUncompressed(form.getCOSObject());
                     count += optimizeResources(document, form.getResources(), level, visited);
                 }
             } catch (Exception ignored) {

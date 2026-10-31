@@ -42,7 +42,7 @@
           "name": "What are the three compression levels?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Mild (Low) retains maximum raster resolution for high-end plotting; Recommended (Medium) downsamples images to 150 DPI for general emailing and web display (~50% size savings); Extreme (High) aggressively compresses to 96 DPI for minimum file size (~75% savings)."
+            "text": "Mild (Low) retains maximum raster resolution for high-end plotting (~10–15% size reduction on embedded raster underlays); Recommended (Medium) downsamples images to 900px for general emailing and web display (~20–25% reduction); Extreme (High) aggressively compresses to 600px for strict municipal portals (~35–45% reduction). Pure vector geometry remains 100% untouched and lossless."
           }
         },
         {
@@ -230,19 +230,19 @@
                         <div class="compress-tiers-grid">
                             <div class="compress-tier-card" data-tier="low">
                                 <div class="compress-tier-title">Low (Mild)</div>
-                                <div class="compress-tier-saving">~25%</div>
-                                <div class="compress-tier-desc">Crisp photo fidelity (1600 DPI max, 85% quality). Best for blueprints with high-res underlays.</div>
+                                <div class="compress-tier-saving">~10–15%</div>
+                                <div class="compress-tier-desc">Crisp photo fidelity (1400px max, 70% quality). Best for blueprints with high-res underlays.</div>
                             </div>
                             <div class="compress-tier-card selected" data-tier="medium">
                                 <span class="compress-tier-badge">Recommended</span>
                                 <div class="compress-tier-title">Medium</div>
-                                <div class="compress-tier-saving">~50%</div>
-                                <div class="compress-tier-desc">Balanced DPI (1200px max, 70% quality). Ideal for email, client review, and web viewing.</div>
+                                <div class="compress-tier-saving">~20–25%</div>
+                                <div class="compress-tier-desc">Balanced DPI (900px max, 50% quality). Ideal for email, client review, and web viewing.</div>
                             </div>
                             <div class="compress-tier-card" data-tier="high">
                                 <div class="compress-tier-title">High (Extreme)</div>
-                                <div class="compress-tier-saving">~75%</div>
-                                <div class="compress-tier-desc">Maximum reduction (800px max, 50% quality). Aggressive size reduction for strict portals.</div>
+                                <div class="compress-tier-saving">~35–45%</div>
+                                <div class="compress-tier-desc">Maximum reduction (600px max, 30% quality). Aggressive size reduction for strict portals.</div>
                             </div>
                         </div>
                     </div>
@@ -331,31 +331,38 @@
                     <tbody>
                         <tr>
                             <td><strong>Low (Mild)</strong></td>
-                            <td>Max 1600 px (~250–300 DPI)</td>
-                            <td>High-fidelity JPEG (Q=0.85)</td>
-                            <td>100% Uncompressed Lossless</td>
-                            <td>15% – 30%</td>
+                            <td>Max 1400 px</td>
+                            <td>High-fidelity JPEG (Q=0.70)</td>
+                            <td>100% Vector Lossless</td>
+                            <td>10% – 15% (raster underlays)</td>
                         </tr>
                         <tr>
                             <td><strong>Medium (Recommended)</strong></td>
-                            <td>Max 1200 px (~150 DPI)</td>
-                            <td>Balanced JPEG (Q=0.70)</td>
-                            <td>100% Uncompressed Lossless</td>
-                            <td>40% – 65%</td>
+                            <td>Max 900 px</td>
+                            <td>Balanced JPEG (Q=0.50)</td>
+                            <td>100% Vector Lossless</td>
+                            <td>20% – 25% (raster underlays)</td>
                         </tr>
                         <tr>
                             <td><strong>High (Extreme)</strong></td>
-                            <td>Max 800 px (~96 DPI)</td>
-                            <td>Compressed JPEG (Q=0.50)</td>
-                            <td>100% Uncompressed Lossless</td>
-                            <td>65% – 85%</td>
+                            <td>Max 600 px</td>
+                            <td>Compressed JPEG (Q=0.30)</td>
+                            <td>100% Vector Lossless</td>
+                            <td>35% – 45% (raster underlays)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pure Vector CAD Sheets</strong></td>
+                            <td>Native Coordinates</td>
+                            <td>Deflate Content Streams</td>
+                            <td>100% Vector Lossless</td>
+                            <td>0% (Already Optimal)</td>
                         </tr>
                         <tr>
                             <td><strong>Structure Optimization</strong></td>
                             <td>Stripped metadata streams &amp; unused object references across all tiers</td>
                             <td>Flate Deflate Re-encoding</td>
                             <td>Preserves PDF/A &amp; rotation flags</td>
-                            <td>Additional 5% overhead saved</td>
+                            <td>Removes overhead</td>
                         </tr>
                     </tbody>
                 </table>
@@ -386,7 +393,7 @@
                         <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </summary>
                     <div class="faq-answer">
-                        <p>Mild (Low) retains maximum raster resolution for high-end plotting; Recommended (Medium) downsamples images to 150 DPI for general emailing and web display (~50% size savings); Extreme (High) aggressively compresses to 96 DPI for minimum file size (~75% savings).</p>
+                        <p>Mild (Low) retains maximum raster resolution for high-end plotting (~10–15% size reduction on embedded raster underlays); Recommended (Medium) downsamples images to 900px for general emailing and web display (~20–25% reduction); Extreme (High) aggressively compresses to 600px for strict municipal portals (~35–45% reduction). Pure vector geometry remains 100% untouched and lossless.</p>
                     </div>
                 </details>
 

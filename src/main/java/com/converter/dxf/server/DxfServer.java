@@ -493,6 +493,9 @@ public class DxfServer {
                 }
 
                 logOp("MERGE_PDF", reqId, 200, System.currentTimeMillis() - startTime, 0, mergedBytes.length, "Files=" + pdfList.size());
+            } catch (IllegalArgumentException | IOException e) {
+                logOp("MERGE_PDF", reqId, 400, System.currentTimeMillis() - startTime, 0, 0, "InvalidInput=" + e.getMessage());
+                sendError(exchange, 400, "INVALID_PDF", e.getMessage());
             } catch (Exception e) {
                 logOp("MERGE_PDF", reqId, 500, System.currentTimeMillis() - startTime, 0, 0, "Error=" + e.getMessage());
                 sendError(exchange, 500, "MERGE_FAILED", "Failed to merge PDF documents: " + e.getMessage());
@@ -579,6 +582,9 @@ public class DxfServer {
                 }
 
                 logOp("COMPRESS_PDF", reqId, 200, System.currentTimeMillis() - startTime, result.getOriginalSize(), result.getCompressedSize(), "Saved=" + String.format(Locale.US, "%.1f%%", result.getSavingsPercentage()));
+            } catch (IllegalArgumentException | IOException e) {
+                logOp("COMPRESS_PDF", reqId, 400, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "InvalidInput=" + e.getMessage());
+                sendError(exchange, 400, "INVALID_PDF", e.getMessage());
             } catch (Exception e) {
                 logOp("COMPRESS_PDF", reqId, 500, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Error=" + e.getMessage());
                 sendError(exchange, 500, "COMPRESSION_FAILED", "Failed to compress PDF: " + e.getMessage());

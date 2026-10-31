@@ -61,16 +61,19 @@ public class PdfMergeService {
             for (int i = 0; i < pdfDocuments.size(); i++) {
                 byte[] bytes = pdfDocuments.get(i);
                 if (bytes == null || bytes.length == 0) {
-                    throw new IOException("PDF document at index " + i + " is empty.");
+                    throw new IOException("PDF document at index " + (i + 1) + " is empty.");
                 }
 
                 // Verify valid PDF header (%PDF-)
                 if (!isValidPdfHeader(bytes)) {
-                    throw new IOException("File at index " + (i + 1) + " is not a valid PDF document.");
+                    throw new IOException("File at index " + (i + 1) + " is not a valid PDF document (missing %PDF- header).");
                 }
 
                 // Quick page count probe and validation
                 try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(bytes))) {
+                    if (doc.getNumberOfPages() == 0) {
+                        throw new IOException("PDF document at index " + (i + 1) + " contains no pages.");
+                    }
                     totalPages += doc.getNumberOfPages();
                 } catch (Exception e) {
                     throw new IOException("Unable to parse PDF at index " + (i + 1) + ": " + e.getMessage(), e);
@@ -99,7 +102,7 @@ public class PdfMergeService {
 
     private static boolean isValidPdfHeader(byte[] bytes) {
         if (bytes == null || bytes.length < 5) return false;
-        String header = new String(bytes, 0, Math.min(bytes.length, 1024));
+        String header = new String(bytes, 0, Math.min(bytes.length, 1024), java.nio.charset.StandardCharsets.ISO_8859_1);
         return header.contains("%PDF-");
     }
 }
