@@ -3,6 +3,7 @@ package com.converter.dxf.server;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import com.converter.dxf.pdf.PdfToolsAuditTest;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -299,6 +300,93 @@ public class DxfServerTest {
         assertEquals(400, conn.getResponseCode(), "Corrupt PDF compress input must yield HTTP 400 Bad Request");
         String errorJson = readStream(conn.getErrorStream());
         assertTrue(errorJson.contains("\"code\":\"INVALID_PDF\""));
+    }
+
+    @Test
+    public void testPdfSplitEndpoint() throws Exception {
+        byte[] testPdf = PdfToolsAuditTest.createMixedPageSizesCadPdf(); // 4 pages
+
+        // Test Split to ZIP
+        URL url = new URL("http://127.0.0.1:" + port + "/api/pdf/split?mode=zip&pages=1-2");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/pdf");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(testPdf);
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        assertEquals("application/zip", conn.getContentType());
+        assertEquals("2", conn.getHeaderField("X-Extracted-Pages"));
+        assertEquals("4", conn.getHeaderField("X-Total-Pages"));
+        byte[] zipBytes = readBytes(conn.getInputStream());
+        assertTrue(zipBytes.length > 500);
+    }
+
+    @Test
+    public void testPdfResizeEndpoint() throws Exception {
+        byte[] testPdf = PdfToolsAuditTest.createVectorCadPage("Floorplan", org.apache.pdfbox.pdmodel.common.PDRectangle.A4, 0);
+
+        URL url = new URL("http://127.0.0.1:" + port + "/api/pdf/resize?size=A1&orientation=landscape&format=json");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/pdf");
+        conn.setRequestProperty("Accept", "application/json");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(testPdf);
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        String json = readStream(conn.getInputStream());
+        assertTrue(json.contains("\"success\":true"));
+        assertTrue(json.contains("\"targetWidthPt\":2383.9"));
+        assertTrue(json.contains("\"pdfBase64\":"));
+    }
+
+    @Test
+    public void testPdfRotateEndpoint() throws Exception {
+        byte[] testPdf = PdfToolsAuditTest.createVectorCadPage("Layout", org.apache.pdfbox.pdmodel.common.PDRectangle.A3, 0);
+
+        URL url = new URL("http://127.0.0.1:" + port + "/api/pdf/rotate?angle=90&pages=1");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/pdf");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(testPdf);
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        assertEquals("application/pdf", conn.getContentType());
+        assertEquals("90", conn.getHeaderField("X-Rotation-Angle"));
+        byte[] rotatedPdf = readBytes(conn.getInputStream());
+        assertTrue(rotatedPdf.length > 100);
+    }
+
+    @Test
+    public void testPdfStampEndpoint() throws Exception {
+        byte[] testPdf = PdfToolsAuditTest.createVectorCadPage("Blueprint", org.apache.pdfbox.pdmodel.common.PDRectangle.A3, 0);
+
+        URL url = new URL("http://127.0.0.1:" + port + "/api/pdf/stamp?text=PRELIMINARY&position=diagonal&opacity=0.6");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/pdf");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(testPdf);
+        }
+
+        assertEquals(200, conn.getResponseCode());
+        assertEquals("application/pdf", conn.getContentType());
+        assertEquals("PRELIMINARY", conn.getHeaderField("X-Stamp-Text"));
+        byte[] stampedPdf = readBytes(conn.getInputStream());
+        assertTrue(stampedPdf.length > 100);
     }
 
 

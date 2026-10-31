@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Split PDF Online - Extract Pages & Drawing Sheets | CADConvert</title>
+    <meta name="description" content="Split and extract PDF pages online. Extract drawing sheets by range (e.g. 1-3,5) into single files or an organized ZIP archive with zero disk retention.">
+    <link rel="canonical" href="https://docconvert.net/split-pdf">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <!-- Open Graph Metadata -->
+    <meta property="og:title" content="Split PDF Online - Extract Pages & Drawing Sheets | CADConvert">
+    <meta property="og:description" content="Split PDF drawing sets and blueprints by page range. Download individual sheets as a ZIP archive with 100% vector fidelity in volatile RAM.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://docconvert.net/split-pdf">
+
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="blueprint-theme">
+    <div class="cad-bg-grid" aria-hidden="true"></div>
+    <div class="cad-radial-glow top-left" aria-hidden="true"></div>
+
+    <!-- Navigation Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <a href="/" class="brand-logo" aria-label="CADConvert Homepage">
+                <span class="logo-symbol">&#9671;</span>
+                <span class="logo-text">CAD<span class="text-cyan">Convert</span></span>
+            </a>
+
+            <nav class="main-nav" aria-label="Primary Navigation">
+                <div class="nav-dropdown" id="tools-dropdown">
+                    <button class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false" id="tools-dropdown-btn">
+                        <span>Tools</span>
+                        <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="nav-dropdown-menu" id="tools-dropdown-menu">
+                        <div class="dropdown-group-title">CAD Converters</div>
+                        <a href="/dxf-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DXF</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DXF to PDF</span>
+                                <span class="dropdown-item-desc">Vector CAD drawing conversion</span>
+                            </div>
+                        </a>
+                        <a href="/dwg-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DWG</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DWG to PDF</span>
+                                <span class="dropdown-item-desc">Native AutoCAD binary support</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-group-title">Drawing Set Tools</div>
+                        <a href="/merge-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Merge PDF</span>
+                                <span class="dropdown-item-desc">Combine multi-sheet sets</span>
+                            </div>
+                        </a>
+                        <a href="/split-pdf" class="dropdown-item active">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="16" y1="3" x2="16" y2="21"/><rect x="2" y="3" width="20" height="18" rx="2"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Split / Extract</span>
+                                <span class="dropdown-item-desc">Extract sheets or output ZIP</span>
+                            </div>
+                        </a>
+                        <a href="/resize-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Resize Pages</span>
+                                <span class="dropdown-item-desc">Scale to A0-A4 or custom</span>
+                            </div>
+                        </a>
+                        <a href="/rotate-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Rotate Pages</span>
+                                <span class="dropdown-item-desc">90°, 180°, 270° orientation</span>
+                            </div>
+                        </a>
+                        <a href="/stamp-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Stamp / Watermark</span>
+                                <span class="dropdown-item-desc">Approval & revision vector stamps</span>
+                            </div>
+                        </a>
+                        <a href="/compress-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Compress PDF</span>
+                                <span class="dropdown-item-desc">Downsample underlays for portals</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/tools" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">All Tools Directory</span>
+                                <span class="dropdown-item-desc">Browse full utility suite</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="/tools" class="nav-link">Hub</a>
+                <a href="#how-it-works" class="nav-link">How It Works</a>
+                <a href="#specs-section" class="nav-link">Specs</a>
+                <a href="#faq-section" class="nav-link">FAQ</a>
+            </nav>
+
+            <div class="nav-actions">
+                <div class="server-status-pill" id="server-status-badge">
+                    <span class="status-dot pulsing" aria-hidden="true"></span>
+                    <span class="status-label" id="status-text">Online</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-open-api">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+                    <span>REST API</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-badge">
+                <span class="badge-icon">✂️</span>
+                <span>DRAWING SET SPLITTER &amp; EXTRACTOR</span>
+            </div>
+            <h1 class="hero-title">Split &amp; Extract PDF Pages</h1>
+            <p class="hero-subtitle">
+                Extract individual drawing sheets by range (e.g. 1-3,5) or package every sheet into an organized ZIP archive.
+                Guarantees <strong class="text-cyan">100% vector linework</strong> and sheet dimensions with zero disk retention.
+            </p>
+        </section>
+
+        <!-- Split Interface -->
+        <section class="converter-wrapper" id="split-section" aria-label="PDF Split Utility">
+            <div class="converter-card" id="split-dropzone">
+                <div class="dropzone-content" id="split-empty-view">
+                    <div class="cad-crosshair-icon" aria-hidden="true">
+                        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="12" y="12" width="40" height="40" rx="4" stroke="#00F0FF" stroke-width="2"/>
+                            <line x1="32" y1="12" x2="32" y2="52" stroke="#38BDF8" stroke-width="2" stroke-dasharray="4 2"/>
+                            <path d="M26 28L38 36M38 28L26 36" stroke="#00F0FF" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+
+                    <h2 class="drop-title">Select PDF Document to Split</h2>
+                    <p class="drop-desc">Drag and drop a PDF drawing set or click to browse</p>
+
+                    <div class="drop-buttons">
+                        <label for="split-input" class="btn btn-primary btn-lg" tabindex="0" role="button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                            <span>Select PDF File</span>
+                        </label>
+                        <input type="file" id="split-input" accept=".pdf" style="display: none;">
+                    </div>
+
+                    <div class="drop-limits">
+                        <span>Max file size: 25 MB</span>
+                        <span class="dot-separator">•</span>
+                        <span>Multi-sheet Drawings Supported</span>
+                        <span class="dot-separator">•</span>
+                        <span>Zero Disk Footprint</span>
+                    </div>
+                </div>
+
+                <!-- Active Split Options Container -->
+                <div class="compress-options-container" id="split-active-container" style="display: none;">
+                    <div class="compress-file-header">
+                        <div>
+                            <h3 id="split-file-display">document.pdf</h3>
+                            <span class="queue-size" id="split-file-orig-size">0 KB</span>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-split-remove">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                            <span>Change File</span>
+                        </button>
+                    </div>
+
+                    <!-- Split Mode Selector -->
+                    <div>
+                        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary);">Choose Extraction Mode</h4>
+                        <div class="compress-tiers-grid">
+                            <div class="compress-tier-card selected" data-split-mode="zip">
+                                <span class="compress-tier-badge">Recommended</span>
+                                <div class="compress-tier-title">Individual Sheets (ZIP)</div>
+                                <div class="compress-tier-desc">Splits selected sheets into separate individual PDF files packaged inside an in-memory ZIP.</div>
+                            </div>
+                            <div class="compress-tier-card" data-split-mode="pdf">
+                                <div class="compress-tier-title">Extracted PDF</div>
+                                <div class="compress-tier-desc">Extracts selected sheets into a single, combined vector PDF document.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Page Range Input -->
+                    <div style="margin-top: 1rem;">
+                        <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-primary);">Specify Page Range</h4>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="text" id="split-range-input" class="form-input" placeholder="e.g. 1-3,5 or all" value="all" style="flex: 1; padding: 0.6rem 0.8rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-family: var(--font-mono);">
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-ghost btn-sm range-pill" data-range="all">All Sheets</button>
+                            <button type="button" class="btn btn-ghost btn-sm range-pill" data-range="1">Sheet 1 Only</button>
+                            <button type="button" class="btn btn-ghost btn-sm range-pill" data-range="1-3">Sheets 1–3</button>
+                            <button type="button" class="btn btn-ghost btn-sm range-pill" data-range="odd">Odd Sheets</button>
+                            <button type="button" class="btn btn-ghost btn-sm range-pill" data-range="even">Even Sheets</button>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 1.25rem;">
+                        <button type="button" class="btn btn-primary btn-lg glow" id="btn-execute-split">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3v18M8 3v18"/></svg>
+                            <span>Split / Extract Now</span>
+                        </button>
+                    </div>
+
+                    <!-- Result Box -->
+                    <div class="compression-result-card" id="split-result-box" style="display: none; margin-top: 1.5rem;">
+                        <h4 style="color: var(--cyan-primary); margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Extraction Completed Successfully!</h4>
+                        <div class="result-metrics-grid">
+                            <div class="result-metric">
+                                <div class="result-metric-label">Extracted Sheets</div>
+                                <div class="result-metric-val" id="res-split-count">0</div>
+                            </div>
+                            <div class="result-metric">
+                                <div class="result-metric-label">Output Format</div>
+                                <div class="result-metric-val" id="res-split-format">ZIP</div>
+                            </div>
+                            <div class="result-metric">
+                                <div class="result-metric-label">File Size</div>
+                                <div class="result-metric-val" id="res-split-size">0 KB</div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.25rem;">
+                            <button type="button" class="btn btn-primary btn-md glow" id="btn-download-split">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                <span>Download Extracted Files</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="section" id="how-it-works">
+            <div class="section-header">
+                <span class="section-tag">WORKFLOW</span>
+                <h2 class="section-title">How to Split PDF Drawing Sets</h2>
+                <p class="section-subtitle">Effortlessly isolate plan sheets, detail pages, or appendices.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">1</div>
+                    <h3 class="feature-title">Upload Drawing Set</h3>
+                    <p class="feature-desc">Select any multi-page PDF document or blueprint set up to 25 MB. Runs in volatile RAM.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">2</div>
+                    <h3 class="feature-title">Enter Page Ranges</h3>
+                    <p class="feature-desc">Specify comma-separated sheets and ranges (e.g. 1-3,5) or choose individual extraction to ZIP.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">3</div>
+                    <h3 class="feature-title">Download Instantly</h3>
+                    <p class="feature-desc">Download single sheets or clean ZIP archive immediately. 100% vector linework and rotations preserved.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <div class="brand-logo footer-logo">
+                    <span class="logo-symbol">&#9671;</span>
+                    <span class="logo-text">CAD<span class="text-cyan">Convert</span></span>
+                </div>
+                <p class="footer-tagline">Engineered for architectural blueprints, engineering schematics, and municipal drawing sets.</p>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-title">Drawing Set Tools</h4>
+                <ul class="footer-links">
+                    <li><a href="/merge-pdf">Merge PDF</a></li>
+                    <li><a href="/split-pdf">Split / Extract Pages</a></li>
+                    <li><a href="/resize-pdf">Resize Drawing Sets</a></li>
+                    <li><a href="/rotate-pdf">Rotate Pages</a></li>
+                    <li><a href="/stamp-pdf">Stamp &amp; Watermark</a></li>
+                    <li><a href="/compress-pdf">Compress PDF</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-title">CAD Converters</h4>
+                <ul class="footer-links">
+                    <li><a href="/dxf-to-pdf">DXF to PDF</a></li>
+                    <li><a href="/dwg-to-pdf">DWG to PDF</a></li>
+                    <li><a href="/tools">All Tools Directory</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 CADConvert. Zero permanent disk storage. 100% volatile memory pipeline.</p>
+        </div>
+    </footer>
+
+    <script src="/app.js"></script>
+</body>
+</html>

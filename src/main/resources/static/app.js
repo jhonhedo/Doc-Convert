@@ -364,6 +364,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const srcFormat = item.name.toLowerCase().endsWith('.dwg') ? 'DWG' : 'DXF';
 
+                let nextStepsHtml = '';
+                if (item.status === 'finished') {
+                    nextStepsHtml = `
+                        <div class="queue-item-chain">
+                            <span class="chain-label">Next Drawing Set Action:</span>
+                            <button type="button" class="btn btn-ghost btn-xs btn-chain-merge" data-id="${item.id}" title="Combine with other sheets into unified drawing set">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                                Merge with other sheets
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-xs btn-chain-resize" data-id="${item.id}" data-target="a1" title="Rescale to standard architectural A1 sheet">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                                Resize to A1
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-xs btn-chain-stamp" data-id="${item.id}" title="Apply approval or status watermark stamp">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                Add stamp
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-xs btn-chain-compress" data-id="${item.id}" title="Compress underlays for municipal portal upload">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                                Compress for portal upload
+                            </button>
+                        </div>
+                    `;
+                }
+
                 row.innerHTML = `
                     <div class="queue-item-info">
                         <div class="queue-item-icon" aria-hidden="true">${srcFormat}</div>
@@ -394,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="queue-item-actions">
                         ${actionButtonsHtml}
                     </div>
+                    ${nextStepsHtml}
                 `;
 
                 queueList.appendChild(row);
@@ -439,6 +465,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 const id = btn.getAttribute('data-id');
                 const item = state.queue.find(it => it.id === id);
                 if (item) openPreviewModal(item);
+            });
+        });
+
+        // Next Drawing Set Chains
+        document.querySelectorAll('.btn-chain-merge').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                const item = state.queue.find(it => it.id === id);
+                if (item && item.pdfBlob) {
+                    await CADHandoff.save(item.name.replace(/\.(dxf|dwg)$/i, '.pdf'), item.pdfBlob);
+                    window.location.href = '/merge-pdf';
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-chain-resize').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                const item = state.queue.find(it => it.id === id);
+                if (item && item.pdfBlob) {
+                    await CADHandoff.save(item.name.replace(/\.(dxf|dwg)$/i, '.pdf'), item.pdfBlob, { targetSize: btn.getAttribute('data-target') || 'a1' });
+                    window.location.href = '/resize-pdf';
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-chain-stamp').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                const item = state.queue.find(it => it.id === id);
+                if (item && item.pdfBlob) {
+                    await CADHandoff.save(item.name.replace(/\.(dxf|dwg)$/i, '.pdf'), item.pdfBlob);
+                    window.location.href = '/stamp-pdf';
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-chain-compress').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                const item = state.queue.find(it => it.id === id);
+                if (item && item.pdfBlob) {
+                    await CADHandoff.save(item.name.replace(/\.(dxf|dwg)$/i, '.pdf'), item.pdfBlob);
+                    window.location.href = '/compress-pdf';
+                }
             });
         });
     }
@@ -1198,6 +1269,771 @@ curl http://localhost:8080/api/health`
             setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
         });
     }
+
+    // =========================================================================
+    // CAD Drawing Set Tool Handoff & Chaining System (Volatile In-Memory / IndexedDB)
+    // =========================================================================
+    const CADHandoff = {
+        DB_NAME: 'cadconvert_handoff_store',
+        STORE_NAME: 'handoff_item',
+        async openDb() {
+            return new Promise((resolve) => {
+                if (!window.indexedDB) { resolve(null); return; }
+                const req = indexedDB.open(CADHandoff.DB_NAME, 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(CADHandoff.STORE_NAME)) {
+                        db.createObjectStore(CADHandoff.STORE_NAME);
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            });
+        },
+        async save(name, blob, meta = {}) {
+            try {
+                const db = await this.openDb();
+                if (db) {
+                    await new Promise((resolve, reject) => {
+                        const tx = db.transaction(CADHandoff.STORE_NAME, 'readwrite');
+                        tx.objectStore(CADHandoff.STORE_NAME).put({ name, blob, meta, timestamp: Date.now() }, 'active');
+                        tx.oncomplete = () => resolve();
+                        tx.onerror = () => reject(tx.error);
+                    });
+                    return true;
+                }
+            } catch (e) {
+                console.warn('IndexedDB save failed, attempting sessionStorage fallback', e);
+            }
+
+            // Fallback to sessionStorage for small PDFs
+            if (blob && blob.size < 4 * 1024 * 1024) {
+                try {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        try {
+                            sessionStorage.setItem('cadconvert_handoff', JSON.stringify({
+                                name,
+                                dataUrl: reader.result,
+                                meta
+                            }));
+                        } catch (e) {}
+                    };
+                    reader.readAsDataURL(blob);
+                    return true;
+                } catch (e) {}
+            }
+            return false;
+        },
+        async load() {
+            try {
+                const db = await this.openDb();
+                if (db) {
+                    const item = await new Promise((resolve) => {
+                        const tx = db.transaction(CADHandoff.STORE_NAME, 'readonly');
+                        const req = tx.objectStore(CADHandoff.STORE_NAME).get('active');
+                        req.onsuccess = () => resolve(req.result);
+                        req.onerror = () => resolve(null);
+                    });
+                    if (item && item.blob) {
+                        try {
+                            const txDel = db.transaction(CADHandoff.STORE_NAME, 'readwrite');
+                            txDel.objectStore(CADHandoff.STORE_NAME).delete('active');
+                        } catch (e) {}
+                        return {
+                            name: item.name,
+                            file: new File([item.blob], item.name, { type: 'application/pdf' }),
+                            blob: item.blob,
+                            meta: item.meta || {}
+                        };
+                    }
+                }
+            } catch (e) {}
+
+            try {
+                const raw = sessionStorage.getItem('cadconvert_handoff');
+                if (raw) {
+                    sessionStorage.removeItem('cadconvert_handoff');
+                    const data = JSON.parse(raw);
+                    const res = await fetch(data.dataUrl);
+                    const blob = await res.blob();
+                    return {
+                        name: data.name,
+                        file: new File([blob], data.name, { type: 'application/pdf' }),
+                        blob: blob,
+                        meta: data.meta || {}
+                    };
+                }
+            } catch (e) {}
+            return null;
+        }
+    };
+
+    function base64ToBlob(b64, mimeType = 'application/pdf') {
+        const byteCharacters = atob(b64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+    }
+
+    // =========================================================================
+    // PDF Split / Extract Utility Logic
+    // =========================================================================
+    const splitDropzone = document.getElementById('split-dropzone');
+    const splitInput = document.getElementById('split-input');
+    const splitEmptyView = document.getElementById('split-empty-view');
+    const splitActiveContainer = document.getElementById('split-active-container');
+    const splitFileDisplay = document.getElementById('split-file-display');
+    const splitFileOrigSize = document.getElementById('split-file-orig-size');
+    const btnSplitRemove = document.getElementById('btn-split-remove');
+    const splitRangeInput = document.getElementById('split-range-input');
+    const btnExecuteSplit = document.getElementById('btn-execute-split');
+    const splitResultBox = document.getElementById('split-result-box');
+    const resSplitCount = document.getElementById('res-split-count');
+    const resSplitFormat = document.getElementById('res-split-format');
+    const resSplitSize = document.getElementById('res-split-size');
+    const btnDownloadSplit = document.getElementById('btn-download-split');
+
+    let currentSplitFile = null;
+    let selectedSplitMode = 'zip';
+    let lastSplitBlob = null;
+    let lastSplitFilename = 'split_sheets.zip';
+
+    function setSplitFile(file) {
+        if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+            alert('Please select a valid PDF drawing set.');
+            return;
+        }
+        currentSplitFile = file;
+        if (splitEmptyView) splitEmptyView.style.display = 'none';
+        if (splitActiveContainer) splitActiveContainer.style.display = 'block';
+        if (splitFileDisplay) splitFileDisplay.textContent = file.name;
+        if (splitFileOrigSize) splitFileOrigSize.textContent = formatBytes(file.size);
+        if (splitResultBox) splitResultBox.style.display = 'none';
+    }
+
+    if (splitInput) {
+        splitInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                setSplitFile(e.target.files[0]);
+            }
+            splitInput.value = '';
+        });
+    }
+
+    if (btnSplitRemove) {
+        btnSplitRemove.addEventListener('click', () => {
+            currentSplitFile = null;
+            if (splitEmptyView) splitEmptyView.style.display = 'block';
+            if (splitActiveContainer) splitActiveContainer.style.display = 'none';
+            if (splitResultBox) splitResultBox.style.display = 'none';
+        });
+    }
+
+    if (splitDropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            splitDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                splitDropzone.classList.add('drag-active');
+            });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            splitDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                splitDropzone.classList.remove('drag-active');
+            });
+        });
+        splitDropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                setSplitFile(e.dataTransfer.files[0]);
+            }
+        });
+        splitDropzone.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('label') || e.target.closest('a') || e.target.closest('input') || e.target.closest('.compress-tier-card')) {
+                return;
+            }
+            if (splitInput) splitInput.click();
+        });
+    }
+
+    document.querySelectorAll('[data-split-mode]').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('[data-split-mode]').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedSplitMode = card.getAttribute('data-split-mode') || 'zip';
+        });
+    });
+
+    document.querySelectorAll('.range-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            if (splitRangeInput) splitRangeInput.value = pill.getAttribute('data-range') || 'all';
+        });
+    });
+
+    if (btnExecuteSplit) {
+        btnExecuteSplit.addEventListener('click', async () => {
+            if (!currentSplitFile) return;
+
+            btnExecuteSplit.disabled = true;
+            const origHtml = btnExecuteSplit.innerHTML;
+            btnExecuteSplit.innerHTML = `<span class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span> Extracting...`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', currentSplitFile, currentSplitFile.name);
+                const rangeVal = splitRangeInput ? (splitRangeInput.value.trim() || 'all') : 'all';
+                formData.append('pages', rangeVal);
+                formData.append('mode', selectedSplitMode);
+
+                const res = await fetch(`/api/pdf/split?pages=${encodeURIComponent(rangeVal)}&mode=${selectedSplitMode}`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || 'Failed to extract drawing set sheets.');
+                }
+
+                const data = await res.json();
+                lastSplitFilename = data.filename || (selectedSplitMode === 'zip' ? 'split_sheets.zip' : 'extracted.pdf');
+                lastSplitBlob = base64ToBlob(data.dataBase64, data.mimeType || (selectedSplitMode === 'zip' ? 'application/zip' : 'application/pdf'));
+
+                if (resSplitCount) resSplitCount.textContent = `${data.extractedPages} of ${data.totalPages}`;
+                if (resSplitFormat) resSplitFormat.textContent = selectedSplitMode === 'zip' ? 'ZIP Archive' : 'Vector PDF';
+                if (resSplitSize) resSplitSize.textContent = formatBytes(data.fileSizeBytes);
+                if (splitResultBox) splitResultBox.style.display = 'block';
+
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btnExecuteSplit.disabled = false;
+                btnExecuteSplit.innerHTML = origHtml;
+            }
+        });
+    }
+
+    if (btnDownloadSplit) {
+        btnDownloadSplit.addEventListener('click', () => {
+            if (!lastSplitBlob) return;
+            downloadBlob(lastSplitBlob, lastSplitFilename);
+        });
+    }
+
+    // =========================================================================
+    // PDF Resize / Rescale Utility Logic
+    // =========================================================================
+    const resizeDropzone = document.getElementById('resize-dropzone');
+    const resizeInput = document.getElementById('resize-input');
+    const resizeEmptyView = document.getElementById('resize-empty-view');
+    const resizeActiveContainer = document.getElementById('resize-active-container');
+    const resizeFileDisplay = document.getElementById('resize-file-display');
+    const resizeFileOrigSize = document.getElementById('resize-file-orig-size');
+    const btnResizeRemove = document.getElementById('btn-resize-remove');
+    const resizeScaleMode = document.getElementById('resize-scale-mode');
+    const resizeOrientation = document.getElementById('resize-orientation');
+    const resizeCustomDims = document.getElementById('resize-custom-dimensions');
+    const resizeCustomW = document.getElementById('resize-custom-w');
+    const resizeCustomH = document.getElementById('resize-custom-h');
+    const btnExecuteResize = document.getElementById('btn-execute-resize');
+    const resizeResultBox = document.getElementById('resize-result-box');
+    const resResizeSheet = document.getElementById('res-resize-sheet');
+    const resResizeDims = document.getElementById('res-resize-dims');
+    const resResizePages = document.getElementById('res-resize-pages');
+    const btnDownloadResize = document.getElementById('btn-download-resize');
+
+    let currentResizeFile = null;
+    let selectedPaperSize = 'a3';
+    let lastResizedBlob = null;
+    let lastResizedFilename = 'resized_drawing.pdf';
+
+    function setResizeFile(file, meta = {}) {
+        if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+            alert('Please select a valid PDF drawing set.');
+            return;
+        }
+        currentResizeFile = file;
+        if (resizeEmptyView) resizeEmptyView.style.display = 'none';
+        if (resizeActiveContainer) resizeActiveContainer.style.display = 'block';
+        if (resizeFileDisplay) resizeFileDisplay.textContent = file.name;
+        if (resizeFileOrigSize) resizeFileOrigSize.textContent = formatBytes(file.size);
+        if (resizeResultBox) resizeResultBox.style.display = 'none';
+
+        if (meta && meta.targetSize) {
+            selectedPaperSize = meta.targetSize.toLowerCase();
+            document.querySelectorAll('[data-paper-size]').forEach(card => {
+                const isMatch = (card.getAttribute('data-paper-size') || '').toLowerCase() === selectedPaperSize;
+                card.classList.toggle('selected', isMatch);
+            });
+            if (resizeCustomDims) {
+                resizeCustomDims.style.display = selectedPaperSize === 'custom' ? 'block' : 'none';
+            }
+        }
+    }
+
+    if (resizeInput) {
+        resizeInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                setResizeFile(e.target.files[0]);
+            }
+            resizeInput.value = '';
+        });
+    }
+
+    if (btnResizeRemove) {
+        btnResizeRemove.addEventListener('click', () => {
+            currentResizeFile = null;
+            if (resizeEmptyView) resizeEmptyView.style.display = 'block';
+            if (resizeActiveContainer) resizeActiveContainer.style.display = 'none';
+            if (resizeResultBox) resizeResultBox.style.display = 'none';
+        });
+    }
+
+    if (resizeDropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            resizeDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                resizeDropzone.classList.add('drag-active');
+            });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            resizeDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                resizeDropzone.classList.remove('drag-active');
+            });
+        });
+        resizeDropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                setResizeFile(e.dataTransfer.files[0]);
+            }
+        });
+        resizeDropzone.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('label') || e.target.closest('a') || e.target.closest('input') || e.target.closest('.compress-tier-card') || e.target.closest('select')) {
+                return;
+            }
+            if (resizeInput) resizeInput.click();
+        });
+    }
+
+    document.querySelectorAll('[data-paper-size]').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('[data-paper-size]').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedPaperSize = card.getAttribute('data-paper-size') || 'a3';
+            if (resizeCustomDims) {
+                resizeCustomDims.style.display = selectedPaperSize === 'custom' ? 'block' : 'none';
+            }
+        });
+    });
+
+    if (btnExecuteResize) {
+        btnExecuteResize.addEventListener('click', async () => {
+            if (!currentResizeFile) return;
+
+            btnExecuteResize.disabled = true;
+            const origHtml = btnExecuteResize.innerHTML;
+            btnExecuteResize.innerHTML = `<span class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span> Rescaling...`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', currentResizeFile, currentResizeFile.name);
+                formData.append('size', selectedPaperSize);
+                const scaleVal = resizeScaleMode ? resizeScaleMode.value : 'fit';
+                const orientVal = resizeOrientation ? resizeOrientation.value : 'auto';
+                formData.append('scaleMode', scaleVal);
+                formData.append('orientation', orientVal);
+
+                if (selectedPaperSize === 'custom') {
+                    formData.append('customWidth', resizeCustomW ? resizeCustomW.value : '1191');
+                    formData.append('customHeight', resizeCustomH ? resizeCustomH.value : '842');
+                }
+
+                const res = await fetch(`/api/pdf/resize?size=${selectedPaperSize}&scaleMode=${scaleVal}&orientation=${orientVal}`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || 'Failed to resize drawing set.');
+                }
+
+                const data = await res.json();
+                lastResizedFilename = data.filename || 'resized_drawing.pdf';
+                lastResizedBlob = base64ToBlob(data.pdfBase64, 'application/pdf');
+
+                if (resResizeSheet) resResizeSheet.textContent = selectedPaperSize.toUpperCase();
+                if (resResizeDims) resResizeDims.textContent = `${Math.round(data.targetWidthPt)} × ${Math.round(data.targetHeightPt)} pt`;
+                if (resResizePages) resResizePages.textContent = `${data.totalPages} Sheet(s)`;
+                if (resizeResultBox) resizeResultBox.style.display = 'block';
+
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btnExecuteResize.disabled = false;
+                btnExecuteResize.innerHTML = origHtml;
+            }
+        });
+    }
+
+    if (btnDownloadResize) {
+        btnDownloadResize.addEventListener('click', () => {
+            if (!lastResizedBlob) return;
+            downloadBlob(lastResizedBlob, lastResizedFilename);
+        });
+    }
+
+    // =========================================================================
+    // PDF Rotate Utility Logic
+    // =========================================================================
+    const rotateDropzone = document.getElementById('rotate-dropzone');
+    const rotateInput = document.getElementById('rotate-input');
+    const rotateEmptyView = document.getElementById('rotate-empty-view');
+    const rotateActiveContainer = document.getElementById('rotate-active-container');
+    const rotateFileDisplay = document.getElementById('rotate-file-display');
+    const rotateFileOrigSize = document.getElementById('rotate-file-orig-size');
+    const btnRotateRemove = document.getElementById('btn-rotate-remove');
+    const rotateRangeInput = document.getElementById('rotate-range-input');
+    const btnExecuteRotate = document.getElementById('btn-execute-rotate');
+    const rotateResultBox = document.getElementById('rotate-result-box');
+    const resRotateAngle = document.getElementById('res-rotate-angle');
+    const resRotateCount = document.getElementById('res-rotate-count');
+    const resRotateTotal = document.getElementById('res-rotate-total');
+    const btnDownloadRotate = document.getElementById('btn-download-rotate');
+
+    let currentRotateFile = null;
+    let selectedRotateAngle = 90;
+    let lastRotatedBlob = null;
+    let lastRotatedFilename = 'rotated_drawing.pdf';
+
+    function setRotateFile(file) {
+        if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+            alert('Please select a valid PDF drawing set.');
+            return;
+        }
+        currentRotateFile = file;
+        if (rotateEmptyView) rotateEmptyView.style.display = 'none';
+        if (rotateActiveContainer) rotateActiveContainer.style.display = 'block';
+        if (rotateFileDisplay) rotateFileDisplay.textContent = file.name;
+        if (rotateFileOrigSize) rotateFileOrigSize.textContent = formatBytes(file.size);
+        if (rotateResultBox) rotateResultBox.style.display = 'none';
+    }
+
+    if (rotateInput) {
+        rotateInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                setRotateFile(e.target.files[0]);
+            }
+            rotateInput.value = '';
+        });
+    }
+
+    if (btnRotateRemove) {
+        btnRotateRemove.addEventListener('click', () => {
+            currentRotateFile = null;
+            if (rotateEmptyView) rotateEmptyView.style.display = 'block';
+            if (rotateActiveContainer) rotateActiveContainer.style.display = 'none';
+            if (rotateResultBox) rotateResultBox.style.display = 'none';
+        });
+    }
+
+    if (rotateDropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            rotateDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                rotateDropzone.classList.add('drag-active');
+            });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            rotateDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                rotateDropzone.classList.remove('drag-active');
+            });
+        });
+        rotateDropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                setRotateFile(e.dataTransfer.files[0]);
+            }
+        });
+        rotateDropzone.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('label') || e.target.closest('a') || e.target.closest('input') || e.target.closest('.compress-tier-card')) {
+                return;
+            }
+            if (rotateInput) rotateInput.click();
+        });
+    }
+
+    document.querySelectorAll('[data-rotate-angle]').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('[data-rotate-angle]').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedRotateAngle = parseInt(card.getAttribute('data-rotate-angle') || '90', 10);
+        });
+    });
+
+    document.querySelectorAll('.rotate-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            if (rotateRangeInput) rotateRangeInput.value = pill.getAttribute('data-range') || 'all';
+        });
+    });
+
+    if (btnExecuteRotate) {
+        btnExecuteRotate.addEventListener('click', async () => {
+            if (!currentRotateFile) return;
+
+            btnExecuteRotate.disabled = true;
+            const origHtml = btnExecuteRotate.innerHTML;
+            btnExecuteRotate.innerHTML = `<span class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span> Rotating...`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', currentRotateFile, currentRotateFile.name);
+                formData.append('angle', selectedRotateAngle);
+                const rangeVal = rotateRangeInput ? (rotateRangeInput.value.trim() || 'all') : 'all';
+                formData.append('pages', rangeVal);
+
+                const res = await fetch(`/api/pdf/rotate?angle=${selectedRotateAngle}&pages=${encodeURIComponent(rangeVal)}`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || 'Failed to rotate PDF sheets.');
+                }
+
+                const data = await res.json();
+                lastRotatedFilename = data.filename || 'rotated_drawing.pdf';
+                lastRotatedBlob = base64ToBlob(data.pdfBase64, 'application/pdf');
+
+                if (resRotateAngle) resRotateAngle.textContent = `+${data.angle}°`;
+                if (resRotateCount) resRotateCount.textContent = data.rotatedPagesCount;
+                if (resRotateTotal) resRotateTotal.textContent = data.totalPages;
+                if (rotateResultBox) rotateResultBox.style.display = 'block';
+
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btnExecuteRotate.disabled = false;
+                btnExecuteRotate.innerHTML = origHtml;
+            }
+        });
+    }
+
+    if (btnDownloadRotate) {
+        btnDownloadRotate.addEventListener('click', () => {
+            if (!lastRotatedBlob) return;
+            downloadBlob(lastRotatedBlob, lastRotatedFilename);
+        });
+    }
+
+    // =========================================================================
+    // PDF Stamp & Watermark Utility Logic
+    // =========================================================================
+    const stampDropzone = document.getElementById('stamp-dropzone');
+    const stampInput = document.getElementById('stamp-input');
+    const stampEmptyView = document.getElementById('stamp-empty-view');
+    const stampActiveContainer = document.getElementById('stamp-active-container');
+    const stampFileDisplay = document.getElementById('stamp-file-display');
+    const stampFileOrigSize = document.getElementById('stamp-file-orig-size');
+    const btnStampRemove = document.getElementById('btn-stamp-remove');
+    const stampTextInput = document.getElementById('stamp-text-input');
+    const stampPosition = document.getElementById('stamp-position');
+    const stampColor = document.getElementById('stamp-color');
+    const stampOpacitySlider = document.getElementById('stamp-opacity-slider');
+    const stampOpacityVal = document.getElementById('stamp-opacity-val');
+    const stampSizeSlider = document.getElementById('stamp-size-slider');
+    const stampSizeVal = document.getElementById('stamp-size-val');
+    const stampBorderCb = document.getElementById('stamp-border-cb');
+    const stampRangeInput = document.getElementById('stamp-range-input');
+    const btnExecuteStamp = document.getElementById('btn-execute-stamp');
+    const stampResultBox = document.getElementById('stamp-result-box');
+    const resStampText = document.getElementById('res-stamp-text');
+    const resStampCount = document.getElementById('res-stamp-count');
+    const resStampTotal = document.getElementById('res-stamp-total');
+    const btnDownloadStamp = document.getElementById('btn-download-stamp');
+
+    let currentStampFile = null;
+    let lastStampedBlob = null;
+    let lastStampedFilename = 'stamped_drawing.pdf';
+
+    if (stampOpacitySlider && stampOpacityVal) {
+        stampOpacitySlider.addEventListener('input', () => {
+            stampOpacityVal.textContent = `${stampOpacitySlider.value}%`;
+        });
+    }
+
+    if (stampSizeSlider && stampSizeVal) {
+        stampSizeSlider.addEventListener('input', () => {
+            stampSizeVal.textContent = `${stampSizeSlider.value} pt`;
+        });
+    }
+
+    document.querySelectorAll('.stamp-preset-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            if (stampTextInput) stampTextInput.value = pill.getAttribute('data-text') || 'FOR APPROVAL';
+        });
+    });
+
+    function setStampFile(file) {
+        if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+            alert('Please select a valid PDF drawing set.');
+            return;
+        }
+        currentStampFile = file;
+        if (stampEmptyView) stampEmptyView.style.display = 'none';
+        if (stampActiveContainer) stampActiveContainer.style.display = 'block';
+        if (stampFileDisplay) stampFileDisplay.textContent = file.name;
+        if (stampFileOrigSize) stampFileOrigSize.textContent = formatBytes(file.size);
+        if (stampResultBox) stampResultBox.style.display = 'none';
+    }
+
+    if (stampInput) {
+        stampInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                setStampFile(e.target.files[0]);
+            }
+            stampInput.value = '';
+        });
+    }
+
+    if (btnStampRemove) {
+        btnStampRemove.addEventListener('click', () => {
+            currentStampFile = null;
+            if (stampEmptyView) stampEmptyView.style.display = 'block';
+            if (stampActiveContainer) stampActiveContainer.style.display = 'none';
+            if (stampResultBox) stampResultBox.style.display = 'none';
+        });
+    }
+
+    if (stampDropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            stampDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                stampDropzone.classList.add('drag-active');
+            });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            stampDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                stampDropzone.classList.remove('drag-active');
+            });
+        });
+        stampDropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                setStampFile(e.dataTransfer.files[0]);
+            }
+        });
+        stampDropzone.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('label') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select')) {
+                return;
+            }
+            if (stampInput) stampInput.click();
+        });
+    }
+
+    if (btnExecuteStamp) {
+        btnExecuteStamp.addEventListener('click', async () => {
+            if (!currentStampFile) return;
+
+            btnExecuteStamp.disabled = true;
+            const origHtml = btnExecuteStamp.innerHTML;
+            btnExecuteStamp.innerHTML = `<span class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span> Applying Stamp...`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', currentStampFile, currentStampFile.name);
+                const textVal = stampTextInput ? (stampTextInput.value.trim() || 'FOR APPROVAL') : 'FOR APPROVAL';
+                const posVal = stampPosition ? stampPosition.value : 'diagonal';
+                const colVal = stampColor ? stampColor.value : '#DC2626';
+                const opVal = stampOpacitySlider ? (parseInt(stampOpacitySlider.value, 10) / 100).toFixed(2) : '0.50';
+                const sizeVal = stampSizeSlider ? stampSizeSlider.value : '36';
+                const borderVal = stampBorderCb ? (stampBorderCb.checked ? 'true' : 'false') : 'true';
+                const rangeVal = stampRangeInput ? (stampRangeInput.value.trim() || 'all') : 'all';
+
+                formData.append('text', textVal);
+                formData.append('position', posVal);
+                formData.append('color', colVal);
+                formData.append('opacity', opVal);
+                formData.append('size', sizeVal);
+                formData.append('border', borderVal);
+                formData.append('pages', rangeVal);
+
+                const res = await fetch(`/api/pdf/stamp?text=${encodeURIComponent(textVal)}&position=${posVal}&color=${encodeURIComponent(colVal)}&opacity=${opVal}&size=${sizeVal}&border=${borderVal}&pages=${encodeURIComponent(rangeVal)}`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || 'Failed to apply stamp to drawing set.');
+                }
+
+                const data = await res.json();
+                lastStampedFilename = data.filename || 'stamped_drawing.pdf';
+                lastStampedBlob = base64ToBlob(data.pdfBase64, 'application/pdf');
+
+                if (resStampText) resStampText.textContent = data.stampText;
+                if (resStampCount) resStampCount.textContent = data.stampedPagesCount;
+                if (resStampTotal) resStampTotal.textContent = data.totalPages;
+                if (stampResultBox) stampResultBox.style.display = 'block';
+
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btnExecuteStamp.disabled = false;
+                btnExecuteStamp.innerHTML = origHtml;
+            }
+        });
+    }
+
+    if (btnDownloadStamp) {
+        btnDownloadStamp.addEventListener('click', () => {
+            if (!lastStampedBlob) return;
+            downloadBlob(lastStampedBlob, lastStampedFilename);
+        });
+    }
+
+    // =========================================================================
+    // Auto-detect & Ingest Handoff PDF from Prior CAD Pipeline Step
+    // =========================================================================
+    async function initHandoff() {
+        try {
+            const handoff = await CADHandoff.load();
+            if (!handoff || !handoff.file) return;
+
+            if (splitDropzone && typeof setSplitFile === 'function') {
+                setSplitFile(handoff.file);
+            } else if (resizeDropzone && typeof setResizeFile === 'function') {
+                setResizeFile(handoff.file, handoff.meta);
+            } else if (rotateDropzone && typeof setRotateFile === 'function') {
+                setRotateFile(handoff.file);
+            } else if (stampDropzone && typeof setStampFile === 'function') {
+                setStampFile(handoff.file);
+            } else if (compressDropzone && typeof setCompressFile === 'function') {
+                setCompressFile(handoff.file);
+            } else if (mergeDropzone && typeof addFilesToMerge === 'function') {
+                addFilesToMerge([handoff.file]);
+            }
+        } catch (e) {
+            console.warn('CAD handoff ingestion error:', e);
+        }
+    }
+    initHandoff();
 
     function escapeHtml(str) {
         if (!str) return '';

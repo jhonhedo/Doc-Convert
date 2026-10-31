@@ -4,6 +4,10 @@ import com.converter.dxf.DxfToPdfConverter;
 import com.converter.dxf.dwg.DwgConverterBridge;
 import com.converter.dxf.pdf.PdfCompressService;
 import com.converter.dxf.pdf.PdfMergeService;
+import com.converter.dxf.pdf.PdfResizeService;
+import com.converter.dxf.pdf.PdfRotateService;
+import com.converter.dxf.pdf.PdfSplitService;
+import com.converter.dxf.pdf.PdfStampService;
 import com.converter.dxf.render.hatch.DynamicHatchRuleEngine;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -93,6 +97,10 @@ public class DxfServer {
         // PDF Utility Endpoints
         server.createContext("/api/pdf/merge", new PdfMergeHandler());
         server.createContext("/api/pdf/compress", new PdfCompressHandler());
+        server.createContext("/api/pdf/split", new PdfSplitHandler());
+        server.createContext("/api/pdf/resize", new PdfResizeHandler());
+        server.createContext("/api/pdf/rotate", new PdfRotateHandler());
+        server.createContext("/api/pdf/stamp", new PdfStampHandler());
 
         // Sample DXF download endpoint
         server.createContext("/api/sample", new SampleHandler());
@@ -111,6 +119,10 @@ public class DxfServer {
         System.out.println(" DWG Convert API:       http://" + host + ":" + port + "/api/convert/dwg");
         System.out.println(" PDF Merge API:         http://" + host + ":" + port + "/api/pdf/merge");
         System.out.println(" PDF Compress API:      http://" + host + ":" + port + "/api/pdf/compress");
+        System.out.println(" PDF Split API:         http://" + host + ":" + port + "/api/pdf/split");
+        System.out.println(" PDF Resize API:        http://" + host + ":" + port + "/api/pdf/resize");
+        System.out.println(" PDF Rotate API:        http://" + host + ":" + port + "/api/pdf/rotate");
+        System.out.println(" PDF Stamp API:         http://" + host + ":" + port + "/api/pdf/stamp");
         System.out.println(" Health Check:          http://" + host + ":" + port + "/api/health");
         System.out.println(" Max Upload Limit:      " + (MAX_UPLOAD_BYTES / (1024 * 1024)) + " MB");
         System.out.println(" Max Concurrency:       " + MAX_CONCURRENT_CONVERSIONS + " workers");
@@ -592,6 +604,325 @@ public class DxfServer {
         }
     }
 
+    private static byte[] resolvePdfBytes(ParsedUpload upload) {
+        if (upload.binaryData != null && upload.binaryData.length > 0) {
+            return upload.binaryData;
+        }
+        if (!upload.files.isEmpty() && upload.files.get(0).data != null && upload.files.get(0).data.length > 0) {
+            upload.filename = upload.files.get(0).filename;
+            return upload.files.get(0).data;
+        }
+        return null;
+    }
+
+    /**
+     * Handler for PDF Page Splitting / Extraction (POST /api/pdf/split).
+     * Splits into individual sheets packaged as ZIP, or extracts ranges into a unified PDF.
+     */
+    private static class PdfSplitHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            addCorsHeaders(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "METHOD_NOT_ALLOWED", "Method Not Allowed. Use POST.");
+                return;
+            }
+
+            String reqId = UUID.randomUUID().toString().substring(0, 8);
+            long startTime = System.currentTimeMillis();
+            ParsedUpload upload;
+            try {
+                upload = parseRequest(exchange);
+            } catch (PayloadTooLargeException e) {
+                sendError(exchange, 413, "PAYLOAD_TOO_LARGE", e.getMessage());
+                return;
+            } catch (Exception e) {
+                sendError(exchange, 400, "BAD_REQUEST", "Unable to parse request body: " + e.getMessage());
+                return;
+            }
+
+            byte[] pdfBytes = resolvePdfBytes(upload);
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing PDF document content to split.");
+                return;
+            }
+
+            PdfSplitService.SplitMode mode = ("pdf".equalsIgnoreCase(upload.splitMode) || "extract".equalsIgnoreCase(upload.splitMode))
+                    ? PdfSplitService.SplitMode.EXTRACT_PDF : PdfSplitService.SplitMode.SPLIT_ZIP;
+
+            try {
+                PdfSplitService.SplitResult result = PdfSplitService.process(pdfBytes, upload.pages, mode, upload.filename);
+                byte[] outBytes = result.getOutputBytes();
+
+                if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
+                    String b64 = Base64.getEncoder().encodeToString(outBytes);
+                    String json = String.format(Locale.US,
+                            "{\"success\":true,\"filename\":\"%s\",\"mimeType\":\"%s\",\"extractedPages\":%d,\"totalPages\":%d,\"fileSizeBytes\":%d,\"dataBase64\":\"%s\"}",
+                            escapeJson(result.getOutputFilename()), escapeJson(result.getMimeType()),
+                            result.getExtractedPageCount(), result.getSourceTotalPages(), outBytes.length, b64);
+                    byte[] resp = json.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                    exchange.sendResponseHeaders(200, resp.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(resp); }
+                } else {
+                    Headers headers = exchange.getResponseHeaders();
+                    headers.set("Content-Type", result.getMimeType());
+                    headers.set("Content-Disposition", "attachment; filename=\"" + escapeJson(result.getOutputFilename()) + "\"");
+                    headers.set("Content-Length", String.valueOf(outBytes.length));
+                    headers.set("X-Extracted-Pages", String.valueOf(result.getExtractedPageCount()));
+                    headers.set("X-Total-Pages", String.valueOf(result.getSourceTotalPages()));
+                    exchange.sendResponseHeaders(200, outBytes.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(outBytes); }
+                }
+                logOp("SPLIT_PDF", reqId, 200, System.currentTimeMillis() - startTime, pdfBytes.length, outBytes.length, "Mode=" + mode + ", Pages=" + result.getExtractedPageCount());
+            } catch (IllegalArgumentException | IOException e) {
+                logOp("SPLIT_PDF", reqId, 400, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Invalid=" + e.getMessage());
+                sendError(exchange, 400, "INVALID_PDF", e.getMessage());
+            } catch (Exception e) {
+                logOp("SPLIT_PDF", reqId, 500, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Error=" + e.getMessage());
+                sendError(exchange, 500, "SPLIT_FAILED", "Failed to split PDF: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Handler for PDF Page Resizing / Rescaling (POST /api/pdf/resize).
+     * Fits pages to A4/A3/A2/A1/A0 or custom sizes in vector space.
+     */
+    private static class PdfResizeHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            addCorsHeaders(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "METHOD_NOT_ALLOWED", "Method Not Allowed. Use POST.");
+                return;
+            }
+
+            String reqId = UUID.randomUUID().toString().substring(0, 8);
+            long startTime = System.currentTimeMillis();
+            ParsedUpload upload;
+            try {
+                upload = parseRequest(exchange);
+            } catch (PayloadTooLargeException e) {
+                sendError(exchange, 413, "PAYLOAD_TOO_LARGE", e.getMessage());
+                return;
+            } catch (Exception e) {
+                sendError(exchange, 400, "BAD_REQUEST", "Unable to parse request: " + e.getMessage());
+                return;
+            }
+
+            byte[] pdfBytes = resolvePdfBytes(upload);
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing PDF document content to resize.");
+                return;
+            }
+
+            PdfResizeService.PaperSize targetSize = PdfResizeService.PaperSize.fromString(upload.targetSize);
+            PdfResizeService.ScaleMode scaleMode = PdfResizeService.ScaleMode.FIT;
+            if ("fill".equalsIgnoreCase(upload.scaleMode)) scaleMode = PdfResizeService.ScaleMode.FILL;
+            else if ("keep_scale".equalsIgnoreCase(upload.scaleMode) || "1:1".equalsIgnoreCase(upload.scaleMode)) scaleMode = PdfResizeService.ScaleMode.KEEP_SCALE;
+
+            PdfResizeService.Orientation orientation = PdfResizeService.Orientation.AUTO;
+            if ("portrait".equalsIgnoreCase(upload.orientation)) orientation = PdfResizeService.Orientation.PORTRAIT;
+            else if ("landscape".equalsIgnoreCase(upload.orientation)) orientation = PdfResizeService.Orientation.LANDSCAPE;
+
+            try {
+                PdfResizeService.ResizeResult result = PdfResizeService.resize(
+                        pdfBytes, targetSize, upload.customWidth, upload.customHeight,
+                        scaleMode, orientation, upload.pages, upload.filename
+                );
+                byte[] outBytes = result.getPdfBytes();
+
+                if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
+                    String b64 = Base64.getEncoder().encodeToString(outBytes);
+                    String json = String.format(Locale.US,
+                            "{\"success\":true,\"filename\":\"%s\",\"totalPages\":%d,\"targetWidthPt\":%.1f,\"targetHeightPt\":%.1f,\"fileSizeBytes\":%d,\"pdfBase64\":\"%s\"}",
+                            escapeJson(result.getFilename()), result.getTotalPages(), result.getTargetWidthPt(), result.getTargetHeightPt(), outBytes.length, b64);
+                    byte[] resp = json.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                    exchange.sendResponseHeaders(200, resp.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(resp); }
+                } else {
+                    Headers headers = exchange.getResponseHeaders();
+                    headers.set("Content-Type", "application/pdf");
+                    headers.set("Content-Disposition", "attachment; filename=\"" + escapeJson(result.getFilename()) + "\"");
+                    headers.set("Content-Length", String.valueOf(outBytes.length));
+                    headers.set("X-Total-Pages", String.valueOf(result.getTotalPages()));
+                    headers.set("X-Target-Width-Pt", String.format(Locale.US, "%.1f", result.getTargetWidthPt()));
+                    headers.set("X-Target-Height-Pt", String.format(Locale.US, "%.1f", result.getTargetHeightPt()));
+                    exchange.sendResponseHeaders(200, outBytes.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(outBytes); }
+                }
+                logOp("RESIZE_PDF", reqId, 200, System.currentTimeMillis() - startTime, pdfBytes.length, outBytes.length, "Target=" + targetSize);
+            } catch (IllegalArgumentException | IOException e) {
+                logOp("RESIZE_PDF", reqId, 400, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Invalid=" + e.getMessage());
+                sendError(exchange, 400, "INVALID_PDF", e.getMessage());
+            } catch (Exception e) {
+                logOp("RESIZE_PDF", reqId, 500, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Error=" + e.getMessage());
+                sendError(exchange, 500, "RESIZE_FAILED", "Failed to resize PDF: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Handler for PDF Page Rotation (POST /api/pdf/rotate).
+     * Rotates pages by 90/180/270 degrees in memory.
+     */
+    private static class PdfRotateHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            addCorsHeaders(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "METHOD_NOT_ALLOWED", "Method Not Allowed. Use POST.");
+                return;
+            }
+
+            String reqId = UUID.randomUUID().toString().substring(0, 8);
+            long startTime = System.currentTimeMillis();
+            ParsedUpload upload;
+            try {
+                upload = parseRequest(exchange);
+            } catch (PayloadTooLargeException e) {
+                sendError(exchange, 413, "PAYLOAD_TOO_LARGE", e.getMessage());
+                return;
+            } catch (Exception e) {
+                sendError(exchange, 400, "BAD_REQUEST", "Unable to parse request: " + e.getMessage());
+                return;
+            }
+
+            byte[] pdfBytes = resolvePdfBytes(upload);
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing PDF document content to rotate.");
+                return;
+            }
+
+            try {
+                PdfRotateService.RotateResult result = PdfRotateService.rotate(pdfBytes, upload.angle, upload.pages, upload.filename);
+                byte[] outBytes = result.getPdfBytes();
+
+                if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
+                    String b64 = Base64.getEncoder().encodeToString(outBytes);
+                    String json = String.format(Locale.US,
+                            "{\"success\":true,\"filename\":\"%s\",\"totalPages\":%d,\"rotatedPagesCount\":%d,\"angle\":%d,\"fileSizeBytes\":%d,\"pdfBase64\":\"%s\"}",
+                            escapeJson(result.getFilename()), result.getTotalPages(), result.getRotatedPagesCount(), result.getAngle(), outBytes.length, b64);
+                    byte[] resp = json.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                    exchange.sendResponseHeaders(200, resp.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(resp); }
+                } else {
+                    Headers headers = exchange.getResponseHeaders();
+                    headers.set("Content-Type", "application/pdf");
+                    headers.set("Content-Disposition", "attachment; filename=\"" + escapeJson(result.getFilename()) + "\"");
+                    headers.set("Content-Length", String.valueOf(outBytes.length));
+                    headers.set("X-Total-Pages", String.valueOf(result.getTotalPages()));
+                    headers.set("X-Rotated-Pages", String.valueOf(result.getRotatedPagesCount()));
+                    headers.set("X-Rotation-Angle", String.valueOf(result.getAngle()));
+                    exchange.sendResponseHeaders(200, outBytes.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(outBytes); }
+                }
+                logOp("ROTATE_PDF", reqId, 200, System.currentTimeMillis() - startTime, pdfBytes.length, outBytes.length, "Angle=" + result.getAngle());
+            } catch (IllegalArgumentException | IOException e) {
+                logOp("ROTATE_PDF", reqId, 400, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Invalid=" + e.getMessage());
+                sendError(exchange, 400, "INVALID_PDF", e.getMessage());
+            } catch (Exception e) {
+                logOp("ROTATE_PDF", reqId, 500, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Error=" + e.getMessage());
+                sendError(exchange, 500, "ROTATE_FAILED", "Failed to rotate PDF: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Handler for PDF Text Stamping & Watermarking (POST /api/pdf/stamp).
+     * Imprints vector text stamps ("FOR APPROVAL", dates, sheet numbers) in volatile memory.
+     */
+    private static class PdfStampHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            addCorsHeaders(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "METHOD_NOT_ALLOWED", "Method Not Allowed. Use POST.");
+                return;
+            }
+
+            String reqId = UUID.randomUUID().toString().substring(0, 8);
+            long startTime = System.currentTimeMillis();
+            ParsedUpload upload;
+            try {
+                upload = parseRequest(exchange);
+            } catch (PayloadTooLargeException e) {
+                sendError(exchange, 413, "PAYLOAD_TOO_LARGE", e.getMessage());
+                return;
+            } catch (Exception e) {
+                sendError(exchange, 400, "BAD_REQUEST", "Unable to parse request: " + e.getMessage());
+                return;
+            }
+
+            byte[] pdfBytes = resolvePdfBytes(upload);
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                sendError(exchange, 400, "EMPTY_INPUT", "Missing PDF document content to stamp.");
+                return;
+            }
+
+            PdfStampService.StampOptions options = new PdfStampService.StampOptions()
+                    .setText(upload.stampText)
+                    .setPosition(PdfStampService.StampPosition.fromString(upload.stampPosition))
+                    .setOpacity(upload.stampOpacity)
+                    .setFontSize(upload.stampFontSize)
+                    .setColorHex(upload.stampColor)
+                    .setDrawBorder(upload.stampBorder)
+                    .setPageRangeExpr(upload.pages);
+
+            try {
+                PdfStampService.StampResult result = PdfStampService.stamp(pdfBytes, options, upload.filename);
+                byte[] outBytes = result.getPdfBytes();
+
+                if (upload.returnJson || "json".equalsIgnoreCase(upload.format)) {
+                    String b64 = Base64.getEncoder().encodeToString(outBytes);
+                    String json = String.format(Locale.US,
+                            "{\"success\":true,\"filename\":\"%s\",\"totalPages\":%d,\"stampedPages\":%d,\"stampText\":\"%s\",\"fileSizeBytes\":%d,\"pdfBase64\":\"%s\"}",
+                            escapeJson(result.getFilename()), result.getTotalPages(), result.getStampedPagesCount(), escapeJson(result.getAppliedStampText()), outBytes.length, b64);
+                    byte[] resp = json.getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                    exchange.sendResponseHeaders(200, resp.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(resp); }
+                } else {
+                    Headers headers = exchange.getResponseHeaders();
+                    headers.set("Content-Type", "application/pdf");
+                    headers.set("Content-Disposition", "attachment; filename=\"" + escapeJson(result.getFilename()) + "\"");
+                    headers.set("Content-Length", String.valueOf(outBytes.length));
+                    headers.set("X-Total-Pages", String.valueOf(result.getTotalPages()));
+                    headers.set("X-Stamped-Pages", String.valueOf(result.getStampedPagesCount()));
+                    headers.set("X-Stamp-Text", escapeJson(result.getAppliedStampText()));
+                    exchange.sendResponseHeaders(200, outBytes.length);
+                    try (OutputStream os = exchange.getResponseBody()) { os.write(outBytes); }
+                }
+                logOp("STAMP_PDF", reqId, 200, System.currentTimeMillis() - startTime, pdfBytes.length, outBytes.length, "Stamp=" + result.getAppliedStampText());
+            } catch (IllegalArgumentException | IOException e) {
+                logOp("STAMP_PDF", reqId, 400, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Invalid=" + e.getMessage());
+                sendError(exchange, 400, "INVALID_PDF", e.getMessage());
+            } catch (Exception e) {
+                logOp("STAMP_PDF", reqId, 500, System.currentTimeMillis() - startTime, pdfBytes.length, 0, "Error=" + e.getMessage());
+                sendError(exchange, 500, "STAMP_FAILED", "Failed to apply stamp to PDF: " + e.getMessage());
+            }
+        }
+    }
+
     private static class SampleHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -746,6 +1077,22 @@ public class DxfServer {
         String compressLevel = "medium";
         String hatchMode = "none"; // Disabled by default
         int dpi = 150;
+
+        // Drawing Set Tools parameters
+        String pages = "all";
+        String splitMode = "zip";
+        String targetSize = "A3";
+        float customWidth = 0f;
+        float customHeight = 0f;
+        String scaleMode = "fit";
+        String orientation = "auto";
+        int angle = 90;
+        String stampText = "FOR APPROVAL";
+        String stampPosition = "diagonal";
+        float stampOpacity = 0.5f;
+        float stampFontSize = 36f;
+        String stampColor = "#DC2626";
+        boolean stampBorder = true;
     }
 
     private static ParsedUpload parseRequest(HttpExchange exchange) throws IOException {
@@ -758,6 +1105,20 @@ public class DxfServer {
         String xLayers = headers.getFirst("X-Target-Layers");
         String xLevel = headers.getFirst("X-Compression-Level");
         String xHatchMode = headers.getFirst("X-Hatch-Mode");
+
+        // Headers for drawing set tools
+        String xPages = headers.getFirst("X-Pages");
+        if (xPages != null && !xPages.trim().isEmpty()) parsed.pages = xPages.trim();
+        String xSplitMode = headers.getFirst("X-Split-Mode");
+        if (xSplitMode != null && !xSplitMode.trim().isEmpty()) parsed.splitMode = xSplitMode.trim();
+        String xTargetSize = headers.getFirst("X-Target-Size");
+        if (xTargetSize != null && !xTargetSize.trim().isEmpty()) parsed.targetSize = xTargetSize.trim();
+        String xAngle = headers.getFirst("X-Rotation-Angle");
+        if (xAngle != null && !xAngle.trim().isEmpty()) {
+            try { parsed.angle = Integer.parseInt(xAngle.trim()); } catch (Exception ignored) {}
+        }
+        String xStampText = headers.getFirst("X-Stamp-Text");
+        if (xStampText != null && !xStampText.trim().isEmpty()) parsed.stampText = xStampText.trim();
 
         if (xHatchMode != null && !xHatchMode.trim().isEmpty()) {
             parsed.hatchMode = xHatchMode.trim();
@@ -790,6 +1151,47 @@ public class DxfServer {
             if (qMap.containsKey("level")) parsed.compressLevel = qMap.get("level");
             if (qMap.containsKey("hatchMode")) parsed.hatchMode = qMap.get("hatchMode");
             if (qMap.containsKey("hatch")) parsed.hatchMode = qMap.get("hatch");
+            if (qMap.containsKey("dpi")) {
+                try { parsed.dpi = Integer.parseInt(qMap.get("dpi")); } catch (Exception ignored) {}
+            }
+            if (qMap.containsKey("layers")) {
+                for (String l : qMap.get("layers").split(",")) {
+                    if (!l.trim().isEmpty()) parsed.targetLayers.add(l.trim());
+                }
+            }
+            if (qMap.containsKey("pages")) parsed.pages = qMap.get("pages");
+            if (qMap.containsKey("range")) parsed.pages = qMap.get("range");
+            if (qMap.containsKey("mode")) parsed.splitMode = qMap.get("mode");
+            if (qMap.containsKey("size")) parsed.targetSize = qMap.get("size");
+            if (qMap.containsKey("scaleMode")) parsed.scaleMode = qMap.get("scaleMode");
+            if (qMap.containsKey("orientation")) parsed.orientation = qMap.get("orientation");
+            if (qMap.containsKey("customWidth")) {
+                try { parsed.customWidth = Float.parseFloat(qMap.get("customWidth")); } catch (Exception ignored) {}
+            }
+            if (qMap.containsKey("customHeight")) {
+                try { parsed.customHeight = Float.parseFloat(qMap.get("customHeight")); } catch (Exception ignored) {}
+            }
+            if (qMap.containsKey("angle")) {
+                try { parsed.angle = Integer.parseInt(qMap.get("angle")); } catch (Exception ignored) {}
+            }
+            if (qMap.containsKey("stampText") || qMap.containsKey("text")) {
+                parsed.stampText = qMap.containsKey("stampText") ? qMap.get("stampText") : qMap.get("text");
+            }
+            if (qMap.containsKey("stampPosition") || qMap.containsKey("position")) {
+                parsed.stampPosition = qMap.containsKey("stampPosition") ? qMap.get("stampPosition") : qMap.get("position");
+            }
+            if (qMap.containsKey("stampOpacity") || qMap.containsKey("opacity")) {
+                try { parsed.stampOpacity = Float.parseFloat(qMap.containsKey("stampOpacity") ? qMap.get("stampOpacity") : qMap.get("opacity")); } catch (Exception ignored) {}
+            }
+            if (qMap.containsKey("stampFontSize") || qMap.containsKey("fontSize")) {
+                try { parsed.stampFontSize = Float.parseFloat(qMap.containsKey("stampFontSize") ? qMap.get("stampFontSize") : qMap.get("fontSize")); } catch (Exception ignored) {}
+            }
+            if (qMap.containsKey("stampColor") || qMap.containsKey("color")) {
+                parsed.stampColor = qMap.containsKey("stampColor") ? qMap.get("stampColor") : qMap.get("color");
+            }
+            if (qMap.containsKey("stampBorder") || qMap.containsKey("border")) {
+                parsed.stampBorder = !"false".equalsIgnoreCase(qMap.containsKey("stampBorder") ? qMap.get("stampBorder") : qMap.get("border"));
+            }
             if (qMap.containsKey("dpi")) {
                 try { parsed.dpi = Integer.parseInt(qMap.get("dpi")); } catch (Exception ignored) {}
             }
@@ -888,6 +1290,34 @@ public class DxfServer {
                 out.compressLevel = new String(partBytes, StandardCharsets.UTF_8).trim();
             } else if (headerText.contains("name=\"hatchMode\"") || headerText.contains("name=\"hatch\"")) {
                 out.hatchMode = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"pages\"") || headerText.contains("name=\"range\"")) {
+                out.pages = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"mode\"")) {
+                out.splitMode = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"size\"") || headerText.contains("name=\"targetSize\"")) {
+                out.targetSize = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"scaleMode\"")) {
+                out.scaleMode = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"orientation\"")) {
+                out.orientation = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"customWidth\"")) {
+                try { out.customWidth = Float.parseFloat(new String(partBytes, StandardCharsets.UTF_8).trim()); } catch (Exception ignored) {}
+            } else if (headerText.contains("name=\"customHeight\"")) {
+                try { out.customHeight = Float.parseFloat(new String(partBytes, StandardCharsets.UTF_8).trim()); } catch (Exception ignored) {}
+            } else if (headerText.contains("name=\"angle\"")) {
+                try { out.angle = Integer.parseInt(new String(partBytes, StandardCharsets.UTF_8).trim()); } catch (Exception ignored) {}
+            } else if (headerText.contains("name=\"stampText\"") || headerText.contains("name=\"text\"")) {
+                out.stampText = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"stampPosition\"") || headerText.contains("name=\"position\"")) {
+                out.stampPosition = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"stampOpacity\"") || headerText.contains("name=\"opacity\"")) {
+                try { out.stampOpacity = Float.parseFloat(new String(partBytes, StandardCharsets.UTF_8).trim()); } catch (Exception ignored) {}
+            } else if (headerText.contains("name=\"stampFontSize\"") || headerText.contains("name=\"fontSize\"")) {
+                try { out.stampFontSize = Float.parseFloat(new String(partBytes, StandardCharsets.UTF_8).trim()); } catch (Exception ignored) {}
+            } else if (headerText.contains("name=\"stampColor\"") || headerText.contains("name=\"color\"")) {
+                out.stampColor = new String(partBytes, StandardCharsets.UTF_8).trim();
+            } else if (headerText.contains("name=\"stampBorder\"") || headerText.contains("name=\"border\"")) {
+                out.stampBorder = !"false".equalsIgnoreCase(new String(partBytes, StandardCharsets.UTF_8).trim());
             }
         }
     }

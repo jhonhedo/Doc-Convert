@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resize PDF Online - Scale Drawings to A0, A1, A2, A3, A4 | CADConvert</title>
+    <meta name="description" content="Resize and rescale PDF drawing sheets online. Fit drawings to A0, A1, A2, A3, A4 or custom dimensions with 100% vector retention in volatile memory.">
+    <link rel="canonical" href="https://docconvert.net/resize-pdf">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <!-- Open Graph Metadata -->
+    <meta property="og:title" content="Resize PDF Online - Scale Drawings to A0, A1, A2, A3, A4 | CADConvert">
+    <meta property="og:description" content="Scale and fit PDF drawing sets to standard engineering paper sizes (A0–A4) with proportional vector scaling and zero rasterization.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://docconvert.net/resize-pdf">
+
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="blueprint-theme">
+    <div class="cad-bg-grid" aria-hidden="true"></div>
+    <div class="cad-radial-glow top-left" aria-hidden="true"></div>
+
+    <!-- Navigation Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <a href="/" class="brand-logo" aria-label="CADConvert Homepage">
+                <span class="logo-symbol">&#9671;</span>
+                <span class="logo-text">CAD<span class="text-cyan">Convert</span></span>
+            </a>
+
+            <nav class="main-nav" aria-label="Primary Navigation">
+                <div class="nav-dropdown" id="tools-dropdown">
+                    <button class="nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false" id="tools-dropdown-btn">
+                        <span>Tools</span>
+                        <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="nav-dropdown-menu" id="tools-dropdown-menu">
+                        <div class="dropdown-group-title">CAD Converters</div>
+                        <a href="/dxf-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DXF</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DXF to PDF</span>
+                                <span class="dropdown-item-desc">Vector CAD drawing conversion</span>
+                            </div>
+                        </a>
+                        <a href="/dwg-to-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">DWG</div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">DWG to PDF</span>
+                                <span class="dropdown-item-desc">Native AutoCAD binary support</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-group-title">Drawing Set Tools</div>
+                        <a href="/merge-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Merge PDF</span>
+                                <span class="dropdown-item-desc">Combine multi-sheet sets</span>
+                            </div>
+                        </a>
+                        <a href="/split-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="16" y1="3" x2="16" y2="21"/><rect x="2" y="3" width="20" height="18" rx="2"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Split / Extract</span>
+                                <span class="dropdown-item-desc">Extract sheets or output ZIP</span>
+                            </div>
+                        </a>
+                        <a href="/resize-pdf" class="dropdown-item active">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Resize Pages</span>
+                                <span class="dropdown-item-desc">Scale to A0-A4 or custom</span>
+                            </div>
+                        </a>
+                        <a href="/rotate-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Rotate Pages</span>
+                                <span class="dropdown-item-desc">90°, 180°, 270° orientation</span>
+                            </div>
+                        </a>
+                        <a href="/stamp-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Stamp / Watermark</span>
+                                <span class="dropdown-item-desc">Approval & revision vector stamps</span>
+                            </div>
+                        </a>
+                        <a href="/compress-pdf" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">Compress PDF</span>
+                                <span class="dropdown-item-desc">Downsample underlays for portals</span>
+                            </div>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/tools" class="dropdown-item">
+                            <div class="dropdown-item-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            </div>
+                            <div class="dropdown-item-info">
+                                <span class="dropdown-item-title">All Tools Directory</span>
+                                <span class="dropdown-item-desc">Browse full utility suite</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="/tools" class="nav-link">Hub</a>
+                <a href="#how-it-works" class="nav-link">How It Works</a>
+                <a href="#specs-section" class="nav-link">Specs</a>
+                <a href="#faq-section" class="nav-link">FAQ</a>
+            </nav>
+
+            <div class="nav-actions">
+                <div class="server-status-pill" id="server-status-badge">
+                    <span class="status-dot pulsing" aria-hidden="true"></span>
+                    <span class="status-label" id="status-text">Online</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-open-api">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+                    <span>REST API</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-badge">
+                <span class="badge-icon">📐</span>
+                <span>VECTOR CAD SHEET RESCALER</span>
+            </div>
+            <h1 class="hero-title">Resize PDF Drawing Sets</h1>
+            <p class="hero-subtitle">
+                Fit drawings to standard engineering sheet sizes (A0, A1, A2, A3, A4) or custom plot bounds.
+                Preserves <strong class="text-cyan">100% mathematical vector geometry</strong> and thin lineweights without rasterization.
+            </p>
+        </section>
+
+        <!-- Resize Interface -->
+        <section class="converter-wrapper" id="resize-section" aria-label="PDF Resize Utility">
+            <div class="converter-card" id="resize-dropzone">
+                <div class="dropzone-content" id="resize-empty-view">
+                    <div class="cad-crosshair-icon" aria-hidden="true">
+                        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="8" y="8" width="48" height="48" rx="4" stroke="#00F0FF" stroke-width="2"/>
+                            <rect x="18" y="18" width="28" height="28" rx="2" stroke="#38BDF8" stroke-width="2" stroke-dasharray="4 2"/>
+                            <path d="M22 14L14 22M42 50L50 42" stroke="#00F0FF" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+
+                    <h2 class="drop-title">Select PDF Document to Resize</h2>
+                    <p class="drop-desc">Drag and drop a PDF drawing set or click to browse</p>
+
+                    <div class="drop-buttons">
+                        <label for="resize-input" class="btn btn-primary btn-lg" tabindex="0" role="button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                            <span>Select PDF File</span>
+                        </label>
+                        <input type="file" id="resize-input" accept=".pdf" style="display: none;">
+                    </div>
+
+                    <div class="drop-limits">
+                        <span>Max file size: 25 MB</span>
+                        <span class="dot-separator">•</span>
+                        <span>Standard A0–A4 + Custom Dimensions</span>
+                        <span class="dot-separator">•</span>
+                        <span>100% Vector Scaling</span>
+                    </div>
+                </div>
+
+                <!-- Active Resize Options Container -->
+                <div class="compress-options-container" id="resize-active-container" style="display: none;">
+                    <div class="compress-file-header">
+                        <div>
+                            <h3 id="resize-file-display">document.pdf</h3>
+                            <span class="queue-size" id="resize-file-orig-size">0 KB</span>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-resize-remove">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                            <span>Change File</span>
+                        </button>
+                    </div>
+
+                    <!-- Target Sheet Size -->
+                    <div>
+                        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary);">Target Paper Size</h4>
+                        <div class="compress-tiers-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
+                            <div class="compress-tier-card" data-paper-size="a0">
+                                <div class="compress-tier-title">A0</div>
+                                <div class="compress-tier-desc">841 &times; 1189 mm</div>
+                            </div>
+                            <div class="compress-tier-card" data-paper-size="a1">
+                                <div class="compress-tier-title">A1</div>
+                                <div class="compress-tier-desc">594 &times; 841 mm</div>
+                            </div>
+                            <div class="compress-tier-card" data-paper-size="a2">
+                                <div class="compress-tier-title">A2</div>
+                                <div class="compress-tier-desc">420 &times; 594 mm</div>
+                            </div>
+                            <div class="compress-tier-card selected" data-paper-size="a3">
+                                <span class="compress-tier-badge">Default</span>
+                                <div class="compress-tier-title">A3</div>
+                                <div class="compress-tier-desc">297 &times; 420 mm</div>
+                            </div>
+                            <div class="compress-tier-card" data-paper-size="a4">
+                                <div class="compress-tier-title">A4</div>
+                                <div class="compress-tier-desc">210 &times; 297 mm</div>
+                            </div>
+                            <div class="compress-tier-card" data-paper-size="custom">
+                                <div class="compress-tier-title">Custom</div>
+                                <div class="compress-tier-desc">Plot bounds in pt</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Dimensions (Hidden unless Custom is selected) -->
+                    <div id="resize-custom-dimensions" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--bg-surface); border: 1px dashed var(--border-color); border-radius: 6px;">
+                        <h5 style="margin-bottom: 0.5rem; color: var(--text-primary); font-size: 0.9rem;">Custom Sheet Dimensions (Points - 72 pt/in)</h5>
+                        <div style="display: flex; gap: 1rem;">
+                            <div style="flex: 1;">
+                                <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">Width (pt)</label>
+                                <input type="number" id="resize-custom-w" class="form-input" value="1191" min="50" style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">Height (pt)</label>
+                                <input type="number" id="resize-custom-h" class="form-input" value="842" min="50" style="width: 100%; padding: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scale Mode & Orientation -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div>
+                            <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-primary);">Scale Mode</h4>
+                            <select id="resize-scale-mode" style="width: 100%; padding: 0.6rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                <option value="fit" selected>Fit Proportional (Preserve Aspect Ratio)</option>
+                                <option value="fill">Fill / Stretch to Edges</option>
+                                <option value="keep_scale">Keep 1:1 Scale (Center on Sheet)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-primary);">Orientation</h4>
+                            <select id="resize-orientation" style="width: 100%; padding: 0.6rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                <option value="auto" selected>Auto (Match Source Drawing)</option>
+                                <option value="landscape">Force Landscape</option>
+                                <option value="portrait">Force Portrait</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 1.25rem;">
+                        <button type="button" class="btn btn-primary btn-lg glow" id="btn-execute-resize">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                            <span>Resize Drawing Set Now</span>
+                        </button>
+                    </div>
+
+                    <!-- Result Box -->
+                    <div class="compression-result-card" id="resize-result-box" style="display: none; margin-top: 1.5rem;">
+                        <h4 style="color: var(--cyan-primary); margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Resize Completed Successfully!</h4>
+                        <div class="result-metrics-grid">
+                            <div class="result-metric">
+                                <div class="result-metric-label">Target Sheet</div>
+                                <div class="result-metric-val" id="res-resize-sheet">A3</div>
+                            </div>
+                            <div class="result-metric">
+                                <div class="result-metric-label">Dimensions</div>
+                                <div class="result-metric-val" id="res-resize-dims">0 &times; 0 pt</div>
+                            </div>
+                            <div class="result-metric">
+                                <div class="result-metric-label">Total Pages</div>
+                                <div class="result-metric-val" id="res-resize-pages">1</div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.25rem;">
+                            <button type="button" class="btn btn-primary btn-md glow" id="btn-download-resize">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                <span>Download Resized PDF</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <div class="brand-logo footer-logo">
+                    <span class="logo-symbol">&#9671;</span>
+                    <span class="logo-text">CAD<span class="text-cyan">Convert</span></span>
+                </div>
+                <p class="footer-tagline">Engineered for architectural blueprints, engineering schematics, and municipal drawing sets.</p>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-title">Drawing Set Tools</h4>
+                <ul class="footer-links">
+                    <li><a href="/merge-pdf">Merge PDF</a></li>
+                    <li><a href="/split-pdf">Split / Extract Pages</a></li>
+                    <li><a href="/resize-pdf">Resize Drawing Sets</a></li>
+                    <li><a href="/rotate-pdf">Rotate Pages</a></li>
+                    <li><a href="/stamp-pdf">Stamp &amp; Watermark</a></li>
+                    <li><a href="/compress-pdf">Compress PDF</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-title">CAD Converters</h4>
+                <ul class="footer-links">
+                    <li><a href="/dxf-to-pdf">DXF to PDF</a></li>
+                    <li><a href="/dwg-to-pdf">DWG to PDF</a></li>
+                    <li><a href="/tools">All Tools Directory</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 CADConvert. Zero permanent disk storage. 100% volatile memory pipeline.</p>
+        </div>
+    </footer>
+
+    <script src="/app.js"></script>
+</body>
+</html>

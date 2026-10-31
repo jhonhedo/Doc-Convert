@@ -386,6 +386,12 @@ body {
     text-decoration: none;
 }
 
+.btn-xs {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
 .btn-sm {
     padding: 0.4rem 0.85rem;
     font-size: 0.8rem;
@@ -2294,3 +2300,50 @@ body {
         font-size: 0.82rem;
     }
 }
+
+/* ==========================================================================
+   Drawing Set Tool Chaining Actions
+   ========================================================================== */
+.queue-item-chain {
+    width: 100%;
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px dashed var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.queue-item-chain .chain-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--cyan-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.25rem;
+}
+
+.chain-next-card {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.chain-next-card .chain-next-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--cyan-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 0.25rem;
+}
+
