@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/styles.css?v=4">
 </head>
 <body class="blueprint-theme">
     <div class="cad-bg-grid" aria-hidden="true"></div>
@@ -27,9 +27,9 @@
     <div class="cad-radial-glow bottom-right" aria-hidden="true"></div>
 
     <!-- Navigation Header -->
-    <header class="navbar" role="banner">
+    <header class="navbar site-header" role="banner">
         <div class="nav-container">
-            <a href="/" class="brand-logo" aria-label="CADConvert Homepage">
+            <a href="/" class="brand-logo" id="brand-link" aria-label="CADConvert Homepage">
                 <div class="logo-icon" aria-hidden="true">
                     <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="3" y="3" width="26" height="26" rx="6" stroke="#00F0FF" stroke-width="2" stroke-dasharray="4 2"/>
@@ -46,8 +46,11 @@
                 </div>
             </a>
 
-            <nav class="nav-links" aria-label="Main Navigation">
-                <!-- CAD Converters: Prominent First -->
+            <button class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
+            <nav class="nav-links" id="site-nav" aria-label="Main Navigation">
                 <div class="nav-cad-group">
                     <a href="/dxf-to-pdf" class="nav-link nav-link-cad" title="Convert AutoCAD DXF drawings to Vector PDF">
                         <span class="nav-badge-dxf">DXF</span>
@@ -59,9 +62,8 @@
                     </a>
                 </div>
 
-                <!-- Drawing Set Tools: Secondary Dropdown -->
                 <div class="nav-dropdown" id="tools-dropdown">
-                    <button class="nav-dropdown-toggle" aria-expanded="false" id="tools-dropdown-btn">
+                    <button class="nav-dropdown-toggle active" aria-expanded="false" id="tools-dropdown-btn">
                         <span>Drawing Set Tools</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
@@ -122,7 +124,7 @@
                             </div>
                         </a>
                         <div class="dropdown-divider"></div>
-                        <a href="/tools" class="dropdown-item active">
+                        <a href="/tools" class="dropdown-item active" aria-current="page">
                             <div class="dropdown-item-icon">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                             </div>
@@ -134,19 +136,9 @@
                     </div>
                 </div>
 
-                <a href="/tools" class="nav-link active">Hub</a>
-                <a href="/#all-tools-section" class="nav-link">Tools Grid</a>
-                <a href="/#features-section" class="nav-link">Features</a>
-                <a href="/#api-section" class="nav-link">API Docs</a>
+                <a href="/#api-section" class="nav-link">API</a>
                 <a href="/#faq-section" class="nav-link">FAQ</a>
             </nav>
-
-            <div class="nav-actions">
-                <div class="server-status-pill" id="server-status-badge">
-                    <span class="status-dot pulsing" aria-hidden="true"></span>
-                    <span class="status-label" id="status-text">Online</span>
-                </div>
-            </div>
         </div>
     </header>
 
@@ -202,7 +194,7 @@
                             </div>
                             <h2 class="tool-card-title">DWG to Vector PDF</h2>
                             <p class="tool-card-desc">
-                                Convert native Autodesk DWG binary blueprints directly in your browser. Seamlessly routes through our LibreDWG bridge into clean-room vector output.
+                                Upload native Autodesk DWG drawings and get a clean vector PDF back, converted on our servers in memory. Seamlessly routes through our LibreDWG bridge into clean-room vector output.
                             </p>
                             <div class="tool-card-tags">
                                 <span class="tag">.dwg</span>
@@ -410,42 +402,50 @@
     </main>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="footer" role="contentinfo">
         <div class="footer-container">
             <div class="footer-col brand-col">
-                <span class="brand-title">CAD<span class="highlight">Convert</span></span>
-                <p class="footer-desc">Complete CAD vector pipeline and PDF utility suite. 100% volatile in-memory processing.</p>
+                <div class="brand-text">
+                    <span class="brand-title">CAD<span class="highlight">Convert</span></span>
+                    <p class="footer-desc">Vector PDF conversion for AutoCAD DXF and DWG drawings, plus drawing-set tools for permit submissions. Files are processed in memory and never stored.</p>
+                </div>
             </div>
             <div class="footer-col">
-                <h4>CAD Converters</h4>
+                <h4>Converters</h4>
                 <ul>
                     <li><a href="/dxf-to-pdf">DXF to PDF</a></li>
                     <li><a href="/dwg-to-pdf">DWG to PDF</a></li>
                 </ul>
             </div>
             <div class="footer-col">
-                <h4>PDF Tools</h4>
+                <h4>Drawing Set Tools</h4>
                 <ul>
-                    <li><a href="/merge-pdf">Merge PDF</a></li>
-                    <li><a href="/compress-pdf">Compress PDF</a></li>
+                    <li><a href="/merge-pdf">Merge Sheets</a></li>
+                    <li><a href="/split-pdf">Split Sheets</a></li>
+                    <li><a href="/resize-pdf">Resize Plot Size</a></li>
+                    <li><a href="/rotate-pdf">Rotate Sheets</a></li>
+                    <li><a href="/stamp-pdf">Approval Stamp</a></li>
+                    <li><a href="/compress-pdf">Compress for Portals</a></li>
                 </ul>
             </div>
             <div class="footer-col">
-                <h4>Support</h4>
+                <h4>Company</h4>
                 <ul>
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                    <li><a href="/terms">Terms of Service</a></li>
+                    <li><a href="/#api-section">REST API Guide</a></li>
                     <li><a href="mailto:support@docconvert.net">support@docconvert.net</a></li>
-                    <li><span class="text-muted">Storage: Volatile RAM</span></li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
             <div class="footer-bottom-container">
-                <span>&copy; 2026 CADConvert.net. All rights reserved.</span>
-                <span class="footer-tag">CADConvert &bull; Utility Hub</span>
+                <span>&copy; 2026 CADConvert &middot; docconvert.net. All rights reserved.</span>
+                <span class="footer-tag">DXF &bull; DWG &bull; Vector PDF</span>
             </div>
         </div>
     </footer>
 
-    <script src="app.js?v=3"></script>
+    <script src="/app.js?v=4"></script>
 </body>
 </html>

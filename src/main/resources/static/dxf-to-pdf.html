@@ -21,7 +21,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/styles.css?v=4">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <!-- JSON-LD FAQPage Schema Markup -->
@@ -72,9 +72,9 @@
     <div class="cad-radial-glow bottom-right" aria-hidden="true"></div>
 
     <!-- Navigation Header -->
-    <header class="navbar" role="banner">
+    <header class="navbar site-header" role="banner">
         <div class="nav-container">
-            <a href="/" class="brand-logo" aria-label="CADConvert Homepage">
+            <a href="/" class="brand-logo" id="brand-link" aria-label="CADConvert Homepage">
                 <div class="logo-icon" aria-hidden="true">
                     <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="3" y="3" width="26" height="26" rx="6" stroke="#00F0FF" stroke-width="2" stroke-dasharray="4 2"/>
@@ -91,8 +91,11 @@
                 </div>
             </a>
 
-            <nav class="nav-links" aria-label="Main Navigation">
-                <!-- CAD Converters: Prominent First -->
+            <button class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
+            <nav class="nav-links" id="site-nav" aria-label="Main Navigation">
                 <div class="nav-cad-group">
                     <a href="/dxf-to-pdf" class="nav-link nav-link-cad active" title="Convert AutoCAD DXF drawings to Vector PDF">
                         <span class="nav-badge-dxf">DXF</span>
@@ -104,7 +107,6 @@
                     </a>
                 </div>
 
-                <!-- Drawing Set Tools: Secondary Dropdown -->
                 <div class="nav-dropdown" id="tools-dropdown">
                     <button class="nav-dropdown-toggle" aria-expanded="false" id="tools-dropdown-btn">
                         <span>Drawing Set Tools</span>
@@ -179,22 +181,9 @@
                     </div>
                 </div>
 
-                <a href="/tools" class="nav-link">Hub</a>
-                <a href="#how-it-works" class="nav-link">How It Works</a>
-                <a href="#specs-section" class="nav-link">Specs</a>
+                <a href="/#api-section" class="nav-link">API</a>
                 <a href="#faq-section" class="nav-link">FAQ</a>
             </nav>
-
-            <div class="nav-actions">
-                <div class="server-status-pill" id="server-status-badge">
-                    <span class="status-dot pulsing" aria-hidden="true"></span>
-                    <span class="status-label" id="status-text">Online</span>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="btn-open-api">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
-                    <span>REST API</span>
-                </button>
-            </div>
         </div>
     </header>
 
@@ -502,43 +491,50 @@
     </div>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="footer" role="contentinfo">
         <div class="footer-container">
             <div class="footer-col brand-col">
-                <span class="brand-title">CAD<span class="highlight">Convert</span></span>
-                <p class="footer-desc">High-performance CAD and PDF vector utilities. In-memory conversions with zero permanent disk storage.</p>
+                <div class="brand-text">
+                    <span class="brand-title">CAD<span class="highlight">Convert</span></span>
+                    <p class="footer-desc">Vector PDF conversion for AutoCAD DXF and DWG drawings, plus drawing-set tools for permit submissions. Files are processed in memory and never stored.</p>
+                </div>
             </div>
             <div class="footer-col">
-                <h4>CAD Tools</h4>
+                <h4>Converters</h4>
                 <ul>
                     <li><a href="/dxf-to-pdf">DXF to PDF</a></li>
                     <li><a href="/dwg-to-pdf">DWG to PDF</a></li>
                 </ul>
             </div>
             <div class="footer-col">
-                <h4>PDF Tools</h4>
+                <h4>Drawing Set Tools</h4>
                 <ul>
-                    <li><a href="/merge-pdf">Merge PDF</a></li>
-                    <li><a href="/compress-pdf">Compress PDF</a></li>
-                    <li><a href="/tools">All Tools</a></li>
+                    <li><a href="/merge-pdf">Merge Sheets</a></li>
+                    <li><a href="/split-pdf">Split Sheets</a></li>
+                    <li><a href="/resize-pdf">Resize Plot Size</a></li>
+                    <li><a href="/rotate-pdf">Rotate Sheets</a></li>
+                    <li><a href="/stamp-pdf">Approval Stamp</a></li>
+                    <li><a href="/compress-pdf">Compress for Portals</a></li>
                 </ul>
             </div>
             <div class="footer-col">
-                <h4>Platform</h4>
+                <h4>Company</h4>
                 <ul>
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                    <li><a href="/terms">Terms of Service</a></li>
+                    <li><a href="/#api-section">REST API Guide</a></li>
                     <li><a href="mailto:support@docconvert.net">support@docconvert.net</a></li>
-                    <li><span class="text-muted">Storage: Volatile RAM</span></li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
             <div class="footer-bottom-container">
-                <span>&copy; 2026 CADConvert.net. All rights reserved.</span>
-                <span class="footer-tag">CAD &bull; DXF &bull; Vector PDF</span>
+                <span>&copy; 2026 CADConvert &middot; docconvert.net. All rights reserved.</span>
+                <span class="footer-tag">DXF &bull; DWG &bull; Vector PDF</span>
             </div>
         </div>
     </footer>
 
-    <script src="app.js?v=3"></script>
+    <script src="/app.js?v=4"></script>
 </body>
 </html>

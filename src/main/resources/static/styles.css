@@ -2438,3 +2438,163 @@ body {
     margin-right: 0.25rem;
 }
 
+
+/* ==========================================================================
+   Unified site header (all pages) — Nov 2026
+   ========================================================================== */
+.site-header .nav-container { gap: 1.5rem; }
+.site-header .nav-links { gap: 1.25rem; flex-wrap: nowrap; }
+.site-header .nav-link,
+.site-header .nav-dropdown-toggle,
+.site-header .nav-link-cad span { white-space: nowrap; }
+.nav-menu-toggle { display: none; }
+
+.dropdown-item.active { background: rgba(0, 240, 255, 0.08); }
+
+/* Tablet & phone: hamburger menu instead of a sideways-scrolling bar */
+@media (max-width: 960px) {
+    .site-header .nav-container {
+        flex-wrap: nowrap;
+        padding: 0.6rem 1rem;
+        position: relative;
+    }
+    .site-header .brand-subtitle { display: none; }
+    .site-header .logo-icon { width: 30px; height: 30px; }
+
+    .nav-menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        background: rgba(56, 189, 248, 0.08);
+        border: 1px solid rgba(56, 189, 248, 0.22);
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    .site-header .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.25rem;
+        padding: 0.75rem 1rem 1rem;
+        background: rgba(10, 16, 32, 0.98);
+        border-bottom: 1px solid var(--border-color);
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6);
+        overflow: visible;
+        order: initial;
+        width: auto;
+        border-top: none;
+    }
+    .site-header.nav-open .nav-links { display: flex; }
+
+    /* Undo older responsive rules that hid / squeezed links */
+    .site-header .nav-links .nav-link:not(.nav-link-cad) {
+        display: block;
+        padding: 0.7rem 0.25rem;
+        font-size: 1rem;
+    }
+    .site-header .nav-cad-group {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.25rem;
+        padding: 0.4rem;
+    }
+    .site-header .nav-link-cad { padding: 0.55rem 0.25rem; font-size: 1rem; }
+
+    .site-header .nav-dropdown { display: block; }
+    .site-header .nav-dropdown-toggle {
+        width: 100%;
+        justify-content: space-between;
+        padding: 0.7rem 0.75rem;
+        font-size: 1rem;
+    }
+    /* In the mobile menu the tools list expands inline when tapped */
+    .site-header .nav-dropdown-menu {
+        position: static;
+        width: auto;
+        display: none;
+        margin-top: 0.4rem;
+        transform: none;
+        box-shadow: none;
+    }
+    .site-header .nav-dropdown:hover .nav-dropdown-menu,
+    .site-header .nav-dropdown:focus-within .nav-dropdown-menu { display: none; }
+    .site-header .nav-dropdown.is-open .nav-dropdown-menu {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+    /* Older desktop rules centre the menu with translateX(-50%); cancel that inline */
+    .site-header .nav-dropdown .nav-dropdown-menu,
+    .site-header .nav-dropdown.is-open .nav-dropdown-menu {
+        left: auto !important;
+        right: auto !important;
+        transform: none !important;
+        width: 100% !important;
+    }
+    .site-header.nav-open .nav-links {
+        background-color: #0a1020;
+        backdrop-filter: none;
+        max-height: calc(100vh - 62px);
+        overflow-y: auto;
+    }
+}
+
+/* ==========================================================================
+   Privacy / Terms pages
+   ========================================================================== */
+.legal-page {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+    position: relative;
+    z-index: 1;
+}
+.legal-article h1 {
+    color: var(--text-primary);
+    -webkit-text-fill-color: currentColor;
+    background: none;
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+.legal-updated {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+}
+.legal-article h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 2rem 0 0.6rem;
+}
+.legal-article p {
+    color: var(--text-secondary);
+    line-height: 1.75;
+    font-size: 1rem;
+}
+.legal-content.legal-article {
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+}
+
+/* Footer links (unified footer) */
+.footer-col ul li { margin-bottom: 0.5rem; }
+.footer-col a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+.footer-col a:hover { color: var(--cyan-primary); }

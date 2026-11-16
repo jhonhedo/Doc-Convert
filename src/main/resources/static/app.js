@@ -99,6 +99,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateHatchBadge();
 
+    // Mobile navigation menu (hamburger)
+    const navMenuToggle = document.getElementById('nav-menu-toggle');
+    const siteHeader = document.querySelector('.site-header');
+    if (navMenuToggle && siteHeader) {
+        const setMenu = (open) => {
+            siteHeader.classList.toggle('nav-open', open);
+            navMenuToggle.setAttribute('aria-expanded', String(open));
+            navMenuToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        };
+        navMenuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setMenu(!siteHeader.classList.contains('nav-open'));
+        });
+        document.addEventListener('click', (e) => {
+            if (!siteHeader.contains(e.target)) setMenu(false);
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+        siteHeader.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => setMenu(false)));
+    }
+
     // Tools Navigation Dropdown
     const toolsDropdown = document.querySelector('.nav-dropdown');
     const toolsDropdownBtn = document.getElementById('tools-dropdown-btn') || document.querySelector('.nav-dropdown-toggle');
@@ -139,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 const latency = Math.round(performance.now() - start);
                 state.apiOnline = true;
-                statusText.textContent = `Online (${latency}ms)`;
+                if (statusText) statusText.textContent = `Online (${latency}ms)`;
                 if (statusBadge) {
                     const dot = statusBadge.querySelector('.status-dot');
                     if (dot) dot.style.backgroundColor = '#10B981';
@@ -149,15 +169,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             state.apiOnline = false;
-            statusText.textContent = 'Service Standby';
+            if (statusText) statusText.textContent = 'Service Standby';
             if (statusBadge) {
                 const dot = statusBadge.querySelector('.status-dot');
                 if (dot) dot.style.backgroundColor = '#F59E0B';
             }
         }
     }
-    checkServerHealth();
-    setInterval(checkServerHealth, 30000);
+    // Only pages that still show a status badge need a health check. Check once on
+    // load and again when the tab becomes visible, instead of polling every 30s.
+    if (statusText) {
+        checkServerHealth();
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkServerHealth();
+        });
+    }
 
     // =========================================================================
     // 2. Drag and Drop & File Upload Handling

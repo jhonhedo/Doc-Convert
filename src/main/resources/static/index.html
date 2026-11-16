@@ -22,7 +22,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/styles.css?v=4">
     <!-- JSZip for multi-file batch download -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
@@ -33,7 +33,7 @@
     <div class="cad-radial-glow bottom-right" aria-hidden="true"></div>
 
     <!-- Navigation Header -->
-    <header class="navbar" role="banner">
+    <header class="navbar site-header" role="banner">
         <div class="nav-container">
             <a href="/" class="brand-logo" id="brand-link" aria-label="CADConvert Homepage">
                 <div class="logo-icon" aria-hidden="true">
@@ -52,8 +52,11 @@
                 </div>
             </a>
 
-            <nav class="nav-links" aria-label="Main Navigation">
-                <!-- CAD Converters: Prominent First -->
+            <button class="nav-menu-toggle" id="nav-menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
+            <nav class="nav-links" id="site-nav" aria-label="Main Navigation">
                 <div class="nav-cad-group">
                     <a href="/dxf-to-pdf" class="nav-link nav-link-cad active" title="Convert AutoCAD DXF drawings to Vector PDF">
                         <span class="nav-badge-dxf">DXF</span>
@@ -65,7 +68,6 @@
                     </a>
                 </div>
 
-                <!-- Drawing Set Tools: Secondary Dropdown -->
                 <div class="nav-dropdown" id="tools-dropdown">
                     <button class="nav-dropdown-toggle" aria-expanded="false" id="tools-dropdown-btn">
                         <span>Drawing Set Tools</span>
@@ -140,24 +142,9 @@
                     </div>
                 </div>
 
-                <a href="/tools" class="nav-link">Hub</a>
-                <a href="#all-tools-section" class="nav-link">Tools Grid</a>
-                <a href="#features-section" class="nav-link">Features</a>
-                <a href="#format-specs" class="nav-link">Specs</a>
-                <a href="#api-section" class="nav-link">API Docs</a>
+                <a href="/#api-section" class="nav-link">API</a>
                 <a href="#faq-section" class="nav-link">FAQ</a>
             </nav>
-
-            <div class="nav-actions">
-                <div class="server-status-pill" id="server-status-badge" role="status" aria-live="polite">
-                    <span class="status-dot pulsing" aria-hidden="true"></span>
-                    <span class="status-label" id="status-text">Connecting...</span>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="btn-open-api" aria-label="View API Integration Guide">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
-                    <span>REST API</span>
-                </button>
-            </div>
         </div>
     </header>
 
@@ -312,7 +299,7 @@
                             </div>
                             <h3 class="tool-card-title">DWG to Vector PDF</h3>
                             <p class="tool-card-desc">
-                                Convert native Autodesk DWG binary blueprints directly in your browser. Powered by our LibreDWG bridge into clean-room vector output.
+                                Upload native Autodesk DWG drawings and get a clean vector PDF back, converted on our servers in memory. Powered by our LibreDWG bridge into clean-room vector output.
                             </p>
                             <div class="tool-card-tags">
                                 <span class="tag">.dwg</span>
@@ -665,11 +652,11 @@
             <div class="faq-accordion">
                 <details class="faq-item" open>
                     <summary class="faq-question">
-                        <span>How does DocConvert handle privacy and uploaded CAD files?</span>
+                        <span>How does CADConvert handle privacy and uploaded CAD files?</span>
                         <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
                     </summary>
                     <div class="faq-answer">
-                        <p>DocConvert operates a strict volatile memory pipeline: uploaded DXF files are converted in RAM and the generated PDF is streamed directly back to you. No CAD drawings or PDF files are permanently stored on server disks. Standard encrypted transit (TLS 1.3) protects files between your browser and our edge.</p>
+                        <p>CADConvert operates a strict volatile memory pipeline: uploaded DXF files are converted in RAM and the generated PDF is streamed directly back to you. No CAD drawings or PDF files are permanently stored on server disks. Standard encrypted transit (TLS 1.3) protects files between your browser and our edge.</p>
                     </div>
                 </details>
 
@@ -679,7 +666,7 @@
                         <svg class="faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
                     </summary>
                     <div class="faq-answer">
-                        <p>DocConvert parses both ASCII and binary DXF files across AutoCAD versions R12, R14, 2000, 2004, 2007, 2010, 2013, and 2018+. It natively handles 2D and 3D coordinate transformations, ECS (Entity Coordinate Systems), and OCS arbitrary axis vectors.</p>
+                        <p>CADConvert parses both ASCII and binary DXF files across AutoCAD versions R12, R14, 2000, 2004, 2007, 2010, 2013, and 2018+. It natively handles 2D and 3D coordinate transformations, ECS (Entity Coordinate Systems), and OCS arbitrary axis vectors.</p>
                     </div>
                 </details>
 
@@ -785,115 +772,53 @@
         </div>
     </div>
 
-    <!-- Privacy Policy Modal -->
-    <div class="modal-backdrop" id="privacy-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="privacy-modal-title">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-header">
-                <div class="modal-title-group">
-                    <h3 id="privacy-modal-title">Privacy Policy & File Retention Disclosure</h3>
-                </div>
-                <button class="modal-close" id="btn-close-privacy" aria-label="Close Privacy Modal">&times;</button>
-            </div>
-            <div class="modal-body legal-content">
-                <h4>1. Volatile In-Memory Processing</h4>
-                <p>DocConvert processes all uploaded AutoCAD DXF files strictly in volatile computer memory (RAM). We do not save, archive, or retain your CAD drawings or generated PDF documents to permanent disk storage or databases.</p>
-                
-                <h4>2. Automatic Immediate Erasure</h4>
-                <p>As soon as the conversion process completes and the resulting PDF bytes are streamed to your browser or client, the drawing objects in memory are discarded and marked for JVM garbage collection.</p>
-                
-                <h4>3. Transit and Infrastructure</h4>
-                <p>All traffic between your browser and DocConvert is encrypted via Transport Layer Security (TLS 1.3). Requests route through Cloudflare Edge security and our Google Cloud application cluster. Standard operational web server access logs record only technical metadata (timestamp, HTTP status, request byte size, and duration) to maintain service reliability. <strong>We never log document contents, drawing entities, or layer names.</strong></p>
-
-                <h4>4. Contact</h4>
-                <p>For questions or privacy inquiries, contact us at <a href="mailto:support@docconvert.net" class="legal-link">support@docconvert.net</a>.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="btn-agree-privacy">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Terms of Service Modal -->
-    <div class="modal-backdrop" id="terms-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-header">
-                <div class="modal-title-group">
-                    <h3 id="terms-modal-title">Terms of Service</h3>
-                </div>
-                <button class="modal-close" id="btn-close-terms" aria-label="Close Terms Modal">&times;</button>
-            </div>
-            <div class="modal-body legal-content">
-                <h4>1. Acceptance of Terms</h4>
-                <p>By accessing or using DocConvert.net, you agree to be bound by these Terms of Service. If you do not agree, please do not use the service.</p>
-
-                <h4>2. Service Scope</h4>
-                <p>DocConvert provides online document and CAD format conversion tools. The service is provided on an "as is" and "as available" basis without warranty of any kind. While our vector engine strives for high CAD fidelity, users are responsible for verifying converted architectural and engineering drawings before submitting them for construction or legal scrutiny.</p>
-
-                <h4>3. Permissible Use</h4>
-                <p>You agree not to upload corrupted, abusive, or malicious payloads, or attempt to disrupt service operation through automated denial-of-service attacks. The maximum permitted file size is 25 MB per upload.</p>
-
-                <h4>4. Limitation of Liability</h4>
-                <p>DocConvert and its operators shall not be liable for any indirect, incidental, or consequential damages resulting from the use or inability to use the conversion engine.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="btn-agree-terms">Close</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Footer -->
     <footer class="footer" role="contentinfo">
         <div class="footer-container">
             <div class="footer-col brand-col">
                 <div class="brand-text">
-                    <span class="brand-title">Doc<span class="highlight">Convert</span></span>
-                    <p class="footer-desc">
-                        Engineering-grade CAD and document vector transformation engine. Built for precision drawings, municipal scrutiny, and automated workflows.
-                    </p>
+                    <span class="brand-title">CAD<span class="highlight">Convert</span></span>
+                    <p class="footer-desc">Vector PDF conversion for AutoCAD DXF and DWG drawings, plus drawing-set tools for permit submissions. Files are processed in memory and never stored.</p>
                 </div>
             </div>
-
             <div class="footer-col">
-                <h4>Capabilities</h4>
+                <h4>Converters</h4>
                 <ul>
-                    <li>AutoCAD DXF to Vector PDF</li>
-                    <li>Dynamic Architectural Hatches</li>
-                    <li>ACI 256 Color Reproduction</li>
-                    <li>Lineweight Plot Scaling</li>
+                    <li><a href="/dxf-to-pdf">DXF to PDF</a></li>
+                    <li><a href="/dwg-to-pdf">DWG to PDF</a></li>
                 </ul>
             </div>
-
             <div class="footer-col">
-                <h4>Platform & Trust</h4>
+                <h4>Drawing Set Tools</h4>
                 <ul>
-                    <li><a href="#" id="link-privacy">Privacy Policy</a></li>
-                    <li><a href="#" id="link-terms">Terms of Service</a></li>
-                    <li><a href="#api-section">REST API Guide</a></li>
+                    <li><a href="/merge-pdf">Merge Sheets</a></li>
+                    <li><a href="/split-pdf">Split Sheets</a></li>
+                    <li><a href="/resize-pdf">Resize Plot Size</a></li>
+                    <li><a href="/rotate-pdf">Rotate Sheets</a></li>
+                    <li><a href="/stamp-pdf">Approval Stamp</a></li>
+                    <li><a href="/compress-pdf">Compress for Portals</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                    <li><a href="/terms">Terms of Service</a></li>
+                    <li><a href="/#api-section">REST API Guide</a></li>
                     <li><a href="mailto:support@docconvert.net">support@docconvert.net</a></li>
                 </ul>
             </div>
-
-            <div class="footer-col">
-                <h4>System Status</h4>
-                <div class="footer-status-box">
-                    <div class="status-indicator">
-                        <span class="status-dot"></span>
-                        <span>Vector Engine v1.0.0 Active</span>
-                    </div>
-                    <small>Storage: Volatile In-Memory Only</small>
-                </div>
-            </div>
         </div>
-
         <div class="footer-bottom">
             <div class="footer-bottom-container">
-                <span>&copy; 2026 DocConvert.net. All rights reserved.</span>
-                <span class="footer-tag">CAD &bull; DXF &bull; Vector PDF</span>
+                <span>&copy; 2026 CADConvert &middot; docconvert.net. All rights reserved.</span>
+                <span class="footer-tag">DXF &bull; DWG &bull; Vector PDF</span>
             </div>
         </div>
     </footer>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=3"></script>
+    <script src="/app.js?v=4"></script>
 </body>
 </html>
